@@ -38,13 +38,13 @@ class Model(object):
         Check if the data is prepared for the datasets to be used and then check stats
         """
         if "NUS" in config.datasets and not config.nus_prep:
-            from data_prep import prepare_nus
+            from synth.data_prep import prepare_nus
             prepare_nus.process_dataset()
         if "JVS" in config.datasets and not config.jvs_prep:
-            from data_prep import prepare_jvs
+            from synth.data_prep import prepare_jvs
             prepare_jvs.process_dataset()
         if "CSD" in config.datasets and not config.csd_prep:
-            from data_prep import prepare_csd
+            from synth.data_prep import prepare_csd
             prepare_csd.process_dataset()
 
 
@@ -111,6 +111,8 @@ class Model(object):
             if len(gt.shape) == 1 or gt.shape[-1] == 1:
                 plt.plot(gt, label = "Ground Truth {}".format(feature))
                 plt.plot(op, label = "Output {}".format(feature))
+                if "notes" in feat_dict[feature].keys():
+                    plt.plot(feat_dict[feature]["notes"], label = "Notes")
                 plt.legend()
             else:
                 ax1 = plt.subplot(211)

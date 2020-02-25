@@ -38,6 +38,8 @@ nus_singers = nus_params['singers'].split(', ')
 jvs_params = config['jvs']
 jvs_singers = jvs_params['singers'].split(', ')
 
+csd_params = config['csd']
+csd_singers = csd_params['singers'].split(', ')
 
 feature_params = config["feature_params"]
 feats_dir = "{}_{}_{}_{}".format(feature_params['feats_dir'], fs, hopsize, framesize)
@@ -53,6 +55,9 @@ if "NUS" in datasets:
     singers = singers + nus_singers
 if "JVS" in datasets:
     singers = singers + jvs_singers
+if "CSD" in datasets:
+    singers = singers + csd_singers
+
 
 num_singers = len(singers)
 
@@ -77,6 +82,7 @@ autovc_code_sam = int(autovc_params["code_sam"])
 lamda = int(autovc_params['lambda'])
 mu = int(autovc_params['mu'])
 autovc_log_dir = "{}_{}_{}_{}{}".format(autovc_params['log_dir'], fs, hopsize, framesize, dataset_list)
+autovc_notes_log_dir = "{}_notes_{}_{}_{}{}".format(autovc_params['log_dir'], fs, hopsize, framesize, dataset_list)
 
 
 SDN_params = config["SDN"]

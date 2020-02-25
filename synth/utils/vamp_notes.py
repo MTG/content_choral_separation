@@ -4,8 +4,9 @@ import vamp
 import numpy as np
 import matplotlib.pyplot as plt
 from synth.utils import segment
+from synth.config import config
 
-def extract_notes_pYIN_vamp(x, Fs=22050, H=128, N=1024):
+def extract_notes_pYIN_vamp(x, Fs=config.fs, H=config.hopsize, N=config.framesize):
     # pYIN parameters
     param = {'threshdistr': 2, 'outputunvoiced': 2, 'precisetime': 0}
     # Options: smoothedpitchtrack, f0candidates, f0probs, voicedprob, candidatesalience, smoothedpitchtrack, notes
@@ -20,7 +21,7 @@ def extract_notes_pYIN_vamp(x, Fs=22050, H=128, N=1024):
     return traj
 
 
-def extract_F0_pYIN_vamp(x, Fs=22050, H=128, N=1024):
+def extract_F0_pYIN_vamp(x, Fs=config.fs, H=config.hopsize, N=config.framesize):
     # pYIN parameters
     param = {'threshdistr': 2, 'outputunvoiced': 2, 'precisetime': 0}
     # Options: smoothedpitchtrack, f0candidates, f0probs, voicedprob, candidatesalience, smoothedpitchtrack, notes

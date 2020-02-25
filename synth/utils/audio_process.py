@@ -37,7 +37,7 @@ def segmenter(audio):
     return voc_segs, time_out
 
 
-def process_seg(audio):
+def process_seg(audio, times):
     """
     Process a segment of the audio.
     Returns the world features, TONY annotated notes and the STFT.
@@ -49,7 +49,7 @@ def process_seg(audio):
     traj = vamp_notes.extract_notes_pYIN_vamp(audio)
 
     # timestamps = np.arange(0, float(traj[-1][1]), config.hoptime)
-    timestamps = np.arange(0, len(out_feats)*config.hoptime, config.hoptime)
+    timestamps = np.arange(times[0], times[1], config.hoptime)
 
     out_notes = vamp_notes.note2traj(traj, timestamps)
 
@@ -77,8 +77,8 @@ def process_audio(audio):
     out_features = []
     out_notes = []
     out_stfts = []
-    for segment in segments:
-        segment_features, segment_notes, segment_stft = process_seg(segment)
+    for times, segment in zip(time_outs, segments):
+        segment_features, segment_notes, segment_stft = process_seg(segment, times)
         out_features.append(segment_features)
         out_notes.append(segment_notes)
         out_stfts.append(segment_stft)

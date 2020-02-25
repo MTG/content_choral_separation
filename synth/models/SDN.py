@@ -386,11 +386,11 @@ class SDN(model.Model):
             if gen_change:
                 female_male = utils.query_yes_no("Female to male?")
                 if female_male:
-                    out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1]-12, mel[:out_mel.shape[0],-1:]), axis = -1)
+                    out_featss = np.concatenate((out_mel, out_f0-12, out_vuv), axis = -1)
                 else:
-                    out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1]+12, mel[:out_mel.shape[0],-1:]), axis = -1)
+                    out_featss = np.concatenate((out_mel, out_f0+12, out_vuv), axis = -1)
             else:
-                out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1], mel[:out_mel.shape[0],-1:]), axis = -1)
+                out_featss = np.concatenate((out_mel, out_f0, out_vuv), axis = -1)
 
             audio_out = sig_process.feats_to_audio(out_featss) 
 
