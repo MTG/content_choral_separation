@@ -106,3 +106,13 @@ def open_lab_file(filename):
         phos2 = [x.split() for x in phos]
         phos3 = np.array([[float(x[0]), float(x[1]), phonemas.index(x[2])] for x in phos2])
     return phos3
+
+def open_f0_file(filename):
+    """
+    Returns a numpy array with the start-time, end-time and notes from the f0 file
+    """
+    with open(filename, "r") as lab_f:
+        phos = lab_f.readlines()
+        phos2 = [x.split() for x in phos]
+        phos3 = np.array([[float(x[0]), float(x[0]) + 0.005804988, float(x[1])] for x in phos2])
+    return phos3

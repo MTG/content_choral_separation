@@ -15,7 +15,7 @@ from synth.config import config
 from . import model
 from synth.modules import autovc as modules_autovc
 from synth.modules import SDN as modules_SDN
-from synth.utils import utils, sig_process
+from synth.utils import utils, sig_process, midi_process, vamp_notes
 
 
 
@@ -402,7 +402,99 @@ class SDN(model.Model):
             audio = sig_process.feats_to_audio(mel) 
             sf.write(os.path.join(config.output_dir,'{}_ori.wav'.format(file_name[:-4])), audio, config.fs)
 
+    def test_file_wav(self, file_name, speaker_index):
+        """
+        Function to extract multi pitch from file. Currently supports only HDF5 files.
+        """
 
+
+        mel, stft = self.read_wav_file(file_name)
+
+        out_mel, out_f0, out_vuv = self.process_file(stft, speaker_index, self.sess)
+
+        plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]},\
+         "F0": {"gt": mel[:,-2], "op": out_f0}, "Vuv": {"gt": mel[:,-1], "op": out_vuv}}
+
+
+        self.plot_features(plot_dict)
+
+        synth = utils.query_yes_no("Synthesize output? ")
+
+        file_name = file_name.split('/')[-1]
+
+        if synth:
+            gen_change = utils.query_yes_no("Change in gender? ")
+            if gen_change:
+                female_male = utils.query_yes_no("Female to male?")
+                if female_male:
+                    out_featss = np.concatenate((out_mel, out_f0-12, out_vuv), axis = -1)
+                else:
+                    out_featss = np.concatenate((out_mel, out_f0+12, out_vuv), axis = -1)
+            else:
+                out_featss = np.concatenate((out_mel, out_f0, out_vuv), axis = -1)
+
+            audio_out = sig_process.feats_to_audio(out_featss) 
+
+            sf.write(os.path.join(config.output_dir,'{}_{}_SDN.wav'.format(file_name[:-4], config.singers[speaker_index])), audio_out, config.fs)
+
+        synth_ori = utils.query_yes_no("Synthesize ground truth with vocoder? ")
+
+        if synth_ori:
+            audio = sig_process.feats_to_audio(mel) 
+            sf.write(os.path.join(config.output_dir,'{}_ori.wav'.format(file_name[:-4])), audio, config.fs)
+
+    def test_file_wav_f0(self, file_name, f0_file, speaker_index):
+        """
+        Function to extract multi pitch from file. Currently supports only HDF5 files.
+        """
+
+
+        mel, stft = self.read_wav_file(file_name)
+
+        f0 = midi_process.open_f0_file(f0_file)
+
+        timestamps = np.arange(0, int(len(mel)/config.hoptime), config.hoptime)
+
+        import pdb;pdb.set_trace()
+
+        f1 = vamp_notes.note2traj(f0, timestamps)
+
+        f1 = sig_process.f0_to_hertz(f1)
+
+        import pdb;pdb.set_trace()
+
+        out_mel, out_f0, out_vuv = self.process_file(stft, speaker_index, self.sess)
+
+        plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]},\
+         "F0": {"gt": f1, "op": out_f0}, "Vuv": {"gt": mel[:,-1], "op": out_vuv}}
+
+
+        self.plot_features(plot_dict)
+
+        synth = utils.query_yes_no("Synthesize output? ")
+
+        file_name = file_name.split('/')[-1]
+
+        if synth:
+            gen_change = utils.query_yes_no("Change in gender? ")
+            if gen_change:
+                female_male = utils.query_yes_no("Female to male?")
+                if female_male:
+                    out_featss = np.concatenate((out_mel, f1-12, out_vuv), axis = -1)
+                else:
+                    out_featss = np.concatenate((out_mel, f1+12, out_vuv), axis = -1)
+            else:
+                out_featss = np.concatenate((out_mel, f1, out_vuv), axis = -1)
+
+            audio_out = sig_process.feats_to_audio(out_featss) 
+
+            sf.write(os.path.join(config.output_dir,'{}_{}_SDN_f0_{}.wav'.format(file_name[:-4], config.singers[speaker_index]), f0_file.split('/')), audio_out, config.fs)
+
+        synth_ori = utils.query_yes_no("Synthesize ground truth with vocoder? ")
+
+        if synth_ori:
+            audio = sig_process.feats_to_audio(mel) 
+            sf.write(os.path.join(config.output_dir,'{}_ori.wav'.format(file_name[:-4])), audio, config.fs)
 
     def test_file_hdf5(self, file_name, speaker_index_2):
         """

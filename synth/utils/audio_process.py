@@ -48,24 +48,31 @@ def process_seg(audio, times):
 
     traj = vamp_notes.extract_notes_pYIN_vamp(audio)
 
-    # timestamps = np.arange(0, float(traj[-1][1]), config.hoptime)
-    timestamps = np.arange(times[0], times[1], config.hoptime)
+    if traj.shape[0]<1 or len(out_feats)<=config.max_phr_len:
+        return None,None,None
+    else:
 
-    out_notes = vamp_notes.note2traj(traj, timestamps)
+        timestamps = np.arange(0, float(traj[-1][1]), config.hoptime)
 
-    out_notes = sig_process.f0_to_hertz(out_notes)
+        out_notes = vamp_notes.note2traj(traj, timestamps)
 
-    out_notes[out_notes== -np.inf] = 0
+        out_notes = sig_process.f0_to_hertz(out_notes)
 
-    out_stft = abs(np.array(utils.stft(audio, hopsize=config.hopsize, nfft=config.framesize, fs=config.fs)))
+        out_notes[out_notes== -np.inf] = 0
 
-    out_feats, out_notes, out_stft = utils.match_time([out_feats, out_notes, out_stft])
+        out_stft = abs(np.array(utils.stft(audio, hopsize=config.hopsize, nfft=config.framesize, fs=config.fs)))
 
-    assert all(out_feats[:,-2]>0)
+        out_feats, out_notes, out_stft = utils.match_time([out_feats, out_notes, out_stft])
 
-    assert len(out_feats) == len(out_notes)
+        if len(out_feats)<=config.max_phr_len:
+            return None,None,None
+        else:
 
-    return out_feats, out_notes, out_stft
+            assert all(out_feats[:,-2]>0)
+
+            assert len(out_feats) == len(out_notes)
+
+            return out_feats, out_notes, out_stft
 
 def process_audio(audio):
     """
@@ -79,9 +86,10 @@ def process_audio(audio):
     out_stfts = []
     for times, segment in zip(time_outs, segments):
         segment_features, segment_notes, segment_stft = process_seg(segment, times)
-        out_features.append(segment_features)
-        out_notes.append(segment_notes)
-        out_stfts.append(segment_stft)
+        if segment_features is not None:
+            out_features.append(segment_features)
+            out_notes.append(segment_notes)
+            out_stfts.append(segment_stft)
     return segments, time_outs, np.array(out_features), np.array(out_notes), np.array(out_stfts)
 
 
