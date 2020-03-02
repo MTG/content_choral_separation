@@ -453,20 +453,17 @@ class SDN(model.Model):
 
         f0 = midi_process.open_f0_file(f0_file)
 
-        timestamps = np.arange(0, int(len(mel)/config.hoptime), config.hoptime)
+        timestamps = np.arange(0, len(mel)*config.hoptime, config.hoptime)
 
-        import pdb;pdb.set_trace()
 
         f1 = vamp_notes.note2traj(f0, timestamps)
 
-        f1 = sig_process.f0_to_hertz(f1)
-
-        import pdb;pdb.set_trace()
+        f1 = sig_process.process_pitch(f1)
 
         out_mel, out_f0, out_vuv = self.process_file(stft, speaker_index, self.sess)
 
         plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]},\
-         "F0": {"gt": f1, "op": out_f0}, "Vuv": {"gt": mel[:,-1], "op": out_vuv}}
+         "F0": {"gt": f1[:,0], "op": out_f0}, "Vuv": {"gt": mel[:,-1], "op": out_vuv}}
 
 
         self.plot_features(plot_dict)
@@ -476,19 +473,12 @@ class SDN(model.Model):
         file_name = file_name.split('/')[-1]
 
         if synth:
-            gen_change = utils.query_yes_no("Change in gender? ")
-            if gen_change:
-                female_male = utils.query_yes_no("Female to male?")
-                if female_male:
-                    out_featss = np.concatenate((out_mel, f1-12, out_vuv), axis = -1)
-                else:
-                    out_featss = np.concatenate((out_mel, f1+12, out_vuv), axis = -1)
-            else:
-                out_featss = np.concatenate((out_mel, f1, out_vuv), axis = -1)
+
+            out_featss = np.concatenate((out_mel[:f1.shape[0]], f1), axis = -1)
 
             audio_out = sig_process.feats_to_audio(out_featss) 
 
-            sf.write(os.path.join(config.output_dir,'{}_{}_SDN_f0_{}.wav'.format(file_name[:-4], config.singers[speaker_index]), f0_file.split('/')), audio_out, config.fs)
+            sf.write(os.path.join(config.output_dir,'{}_{}_SDN_f0_{}.wav'.format(file_name[:-4], config.singers[speaker_index], f0_file.split('/')[-1])), audio_out, config.fs)
 
         synth_ori = utils.query_yes_no("Synthesize ground truth with vocoder? ")
 

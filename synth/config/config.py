@@ -11,6 +11,7 @@ config = configparser.ConfigParser()
 config.read(config_path)
 
 raw_dirs = config["raw_dirs"]
+emb_dir = raw_dirs["embs_ge2e_full"]
 
 sig_process = config["signal_processing"]
 fs = int(sig_process["fs"])
@@ -83,7 +84,9 @@ lamda = int(autovc_params['lambda'])
 mu = int(autovc_params['mu'])
 autovc_log_dir = "{}_{}_{}_{}{}".format(autovc_params['log_dir'], fs, hopsize, framesize, dataset_list)
 autovc_notes_log_dir = "{}_notes_{}_{}_{}{}".format(autovc_params['log_dir'], fs, hopsize, framesize, dataset_list)
-
+autovc_emb_log_dir = "{}_emb_{}_{}_{}{}".format(autovc_params['log_dir'], fs, hopsize, framesize, dataset_list)
+autovc_mix_emb = autovc_params.getboolean("mix_emb")
+autovc_emb_feats = int(autovc_params["emb_features"])
 
 SDN_params = config["SDN"]
 SDN_mix = SDN_params.getboolean("mix")
