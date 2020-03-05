@@ -42,6 +42,12 @@ jvs_singers = jvs_params['singers'].split(', ')
 csd_params = config['csd']
 csd_singers = csd_params['singers'].split(', ')
 
+bach_params = config['bach']
+bach_singers = bach_params['singers'].split(', ')
+
+with open('/home/pc2752/share/final_research/singers_DAMP.txt') as damp_file:
+    damp_singers = damp_file.read().split(', ')
+
 feature_params = config["feature_params"]
 feats_dir = "{}_{}_{}_{}".format(feature_params['feats_dir'], fs, hopsize, framesize)
 output_dir = feature_params['output_dir']
@@ -58,6 +64,10 @@ if "JVS" in datasets:
     singers = singers + jvs_singers
 if "CSD" in datasets:
     singers = singers + csd_singers
+if "DAMP" in datasets:
+    singers = singers + damp_singers
+if "BACH" in datasets:
+    singers = singers + bach_singers
 
 
 num_singers = len(singers)
@@ -67,6 +77,8 @@ data_prep = config["data_prep"]
 nus_prep = data_prep.getboolean("NUS")
 csd_prep = data_prep.getboolean("CSD")
 jvs_prep = data_prep.getboolean("JVS")
+damp_prep = data_prep.getboolean("DAMP")
+bach_prep = data_prep.getboolean("BACH")
 
 stat_params = config["stat_prep"]
 stat_prep = stat_params.getboolean("prep")
@@ -84,7 +96,7 @@ lamda = int(autovc_params['lambda'])
 mu = int(autovc_params['mu'])
 autovc_log_dir = "{}_{}_{}_{}{}".format(autovc_params['log_dir'], fs, hopsize, framesize, dataset_list)
 autovc_notes_log_dir = "{}_notes_{}_{}_{}{}".format(autovc_params['log_dir'], fs, hopsize, framesize, dataset_list)
-autovc_emb_log_dir = "{}_emb_{}_{}_{}{}".format(autovc_params['log_dir'], fs, hopsize, framesize, dataset_list)
+autovc_emb_log_dir = "{}_emb_{}_{}_{}{}".format(autovc_params['log_dir'], fs, hopsize, framesize, "_nus")
 autovc_mix_emb = autovc_params.getboolean("mix_emb")
 autovc_emb_feats = int(autovc_params["emb_features"])
 

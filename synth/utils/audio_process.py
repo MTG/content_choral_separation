@@ -37,7 +37,7 @@ def segmenter(audio):
     return voc_segs, time_out
 
 
-def process_seg(audio, times):
+def process_seg(audio):
     """
     Process a segment of the audio.
     Returns the world features, TONY annotated notes and the STFT.
@@ -56,9 +56,11 @@ def process_seg(audio, times):
 
         out_notes = vamp_notes.note2traj(traj, timestamps)
 
-        out_notes = sig_process.f0_to_hertz(out_notes)
+        out_notes_1 = sig_process.f0_to_hertz(out_notes[:,0])
 
-        out_notes[out_notes== -np.inf] = 0
+        out_notes_1[out_notes_1== -np.inf] = 0
+
+        out_notes[:,0] = out_notes_1
 
         out_stft = abs(np.array(utils.stft(audio, hopsize=config.hopsize, nfft=config.framesize, fs=config.fs)))
 
@@ -85,7 +87,7 @@ def process_audio(audio):
     out_notes = []
     out_stfts = []
     for times, segment in zip(time_outs, segments):
-        segment_features, segment_notes, segment_stft = process_seg(segment, times)
+        segment_features, segment_notes, segment_stft = process_seg(segment)
         if segment_features is not None:
             out_features.append(segment_features)
             out_notes.append(segment_notes)

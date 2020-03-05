@@ -5,21 +5,22 @@ import librosa
 from synth.training import train_autovc, train_SDN, train_autovc_notes
 from synth.synthesis import synth_autovc, synth_SDN, synth_autovc_notes
 from synth.config import config
-from synth.data_prep import prepare_nus
+from synth.data_prep import prepare_bach
 from synth.models import SDN, autovc_emb
 # from synth.data_pipeline import autovc_emb
 
-model = autovc_emb.AutoVC()
+# model = autovc_emb.AutoVC()
 # model.train()
-model.test_file_hdf5("nus_VKOW_11_22.hdf5", 1)
+# model.test_file_hdf5("nus_ADIZ_09_13.hdf5", 21)
 
 # jaja, jojo = next(autovc_emb.data_gen_vc())
 # import pdb;pdb.set_trace()
-# prepare_nus.process_dataset()
+# prepare_bach.process_dataset()
 # waves, feats, notes, phons, songs = prepare_nus.walk_directory("ADIZ")
-# train_SDN.train()
-# synth_autovc_notes.synthesize_hdf5("nus_ADIZ_09_13.hdf5", 0)
-# synth_SDN.synthesize_wav("../datasets/damp_emir_ex/474572_111629-557387728_1622049303-GB-F-1350349314.m4a", 4)
+train_autovc.train()
+train_SDN.train()
+# synth_autovc.synthesize_hdf5('bach_s_8BC009_4.hdf5', 1)
+# synth_SDN.synthesize_wav("./locus_alto_2singers.mp3", 0)
 
 # synth_SDN.synthesize_wav("./DG_take1_3altos.wav", 4)
 # synth_SDN.synthesize_wav("../datasets/EsmucChoralSet/2_SeeleChristi/IsolatedSections/SC3_tenors1/SC3_tenors1_AB.wav", 1)

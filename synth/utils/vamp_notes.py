@@ -13,10 +13,15 @@ def extract_notes_pYIN_vamp(x, Fs=config.fs, H=config.hopsize, N=config.framesiz
     pYIN_note_output = vamp.collect(x, Fs, "pyin:pyin", output='notes', parameters=param, step_size=H, block_size=N)
     # reformating
     traj = np.empty((0, 3))
-    for entry in pYIN_note_output['list']:
+    for j, entry in enumerate(pYIN_note_output['list']):
         timestamp = float(entry['timestamp'])
         duration = float(entry['duration'])
         note = float(entry['values'][0])
+        if j == 0:
+            traj = np.vstack((traj, [0, timestamp, 0]))
+        elif timestamp != traj[-1][1]:
+            traj = np.vstack((traj, [traj[-1][1], timestamp, 0]))
+
         traj = np.vstack((traj, [timestamp, timestamp+duration, note]))
     return traj
 
@@ -40,14 +45,15 @@ def extract_F0_pYIN_vamp(x, Fs=config.fs, H=config.hopsize, N=config.framesize):
     # return traj
 
 def note2traj(note_info, timebase):
-    traj = np.hstack((timebase.reshape(-1, 1), np.zeros(len(timebase)).reshape(-1, 1)))
+    traj = np.hstack((timebase.reshape(-1, 1), np.zeros(len(timebase)).reshape(-1, 1), np.zeros(len(timebase)).reshape(-1, 1)))
     for i in range(note_info.shape[0]):
         # get indices of trajectory
         t_start_idx = np.argmin(np.abs(timebase - note_info[i, 0]))
         t_end_idx = np.argmin(np.abs(timebase - note_info[i, 1]))
         note_len_idx = t_end_idx - t_start_idx
         traj[t_start_idx:t_end_idx, 1] = note_info[i, 2]
-    return traj[:,1]
+        traj[t_start_idx:t_end_idx, 2] = np.linspace(0,1,note_len_idx) 
+    return traj[:,1:]
 
 
 

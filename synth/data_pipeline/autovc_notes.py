@@ -26,8 +26,8 @@ def data_gen_vc(mode = 'Train', sec_mode = 0):
 
     # voc_list = [x for x in voc_list if x not in ['csd_alto1_NinoDios_14.hdf5', 'jvs_jvs023_raw_song_unique_11.hdf5', 'jvs_jvs024_raw_song_unique_2.hdf5', 'csd_soprano3_NinoDios_18.hdf5', 'csd_tenor1_ElRossinyol_13.hdf5', 'csd_soprano3_NinoDios_5.hdf5', 'csd_tenor3_NinoDios_8.hdf5', 'csd_tenor2_NinoDios_13.hdf5', 'jvs_jvs047_raw_song_unique_4.hdf5', 'jvs_jvs098_raw_song_unique_1.hdf5', 'jvs_jvs023_raw_song_unique_9.hdf5', 'jvs_jvs023_raw_song_unique_14.hdf5', 'csd_soprano2_NinoDios_13.hdf5', 'csd_tenor4_LocusIste_12.hdf5', 'csd_bass4_NinoDios_5.hdf5', 'jvs_jvs014_raw_song_unique_15.hdf5', 'csd_soprano2_NinoDios_2.hdf5', 'csd_bass4_NinoDios_12.hdf5', 'jvs_jvs041_raw_song_unique_14.hdf5', 'csd_alto3_LocusIste_25.hdf5', 'jvs_jvs023_raw_song_unique_16.hdf5', 'jvs_jvs092_raw_song_unique_12.hdf5', 'jvs_jvs074_raw_song_unique_6.hdf5', 'jvs_jvs017_raw_song_unique_2.hdf5']]
 
-    train_list = [x for x in voc_list if not x.split('_')[2]=='04']
-    val_list = [x for x in voc_list if x.split('_')[2]=='04']
+    train_list = [x for x in voc_list if not x.split('_')[2]=='04'] + voc_list[:int(len(voc_list)*0.9)]
+    val_list = [x for x in voc_list if x.split('_')[2]=='04']+ voc_list[int(len(voc_list)*0.9):]
 
 
     max_files_to_process = int(config.batch_size/config.autovc_samples_per_file)
@@ -70,7 +70,7 @@ def data_gen_vc(mode = 'Train', sec_mode = 0):
 
             mel = (mel - min_feat)/(max_feat-min_feat)
 
-            notes = notes/np.round(max_feat[-2])
+            notes[:,0] = notes[:,0]/np.round(max_feat[-2])
 
             assert mel.max()<=1.0 and mel.min()>=0.0, "Error in file {}, max: {}, min: {}".format(voc_to_open, mel.max(), mel.min())
 

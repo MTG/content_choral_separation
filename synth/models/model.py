@@ -46,7 +46,12 @@ class Model(object):
         if "CSD" in config.datasets and not config.csd_prep:
             from synth.data_prep import prepare_csd
             prepare_csd.process_dataset()
-
+        if "DAMP" in config.datasets and not config.damp_prep:
+            from synth.data_prep import prepare_damp
+            prepare_damp.process_dataset()
+        if "BACH" in config.datasets and not config.bach_prep:
+            from synth.data_prep import prepare_bach
+            prepare_bach.process_dataset()
 
         if not config.stat_prep:
             data_pipeline.get_stats()

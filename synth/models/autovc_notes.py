@@ -75,8 +75,8 @@ class AutoVC(model.Model):
         self.output_stft_f0 = tf.abs(tf.contrib.signal.stft(tf.squeeze(self.f0), 256, 64))
         self.output_stft_placeholder_f0 = tf.abs(tf.contrib.signal.stft(tf.squeeze(self.f0_placeholder), 256, 64))
 
-        self.f0_loss = tf.reduce_sum(tf.abs(self.f0 - self.f0_placeholder)*(1-self.vuv_placeholder))\
-         + 0.5*tf.reduce_sum(tf.abs(self.output_stft_placeholder_f0 - self.output_stft_f0))
+        self.f0_loss = tf.reduce_sum(tf.abs(self.f0 - self.f0_placeholder))\
+         + tf.reduce_sum(tf.abs(self.output_stft_placeholder_f0 - self.output_stft_f0))
 
         self.final_loss = self.recon_loss + config.mu * self.recon_loss_0 + config.lamda * self.content_loss
 
@@ -103,7 +103,7 @@ class AutoVC(model.Model):
         self.speaker_labels_1 = tf.placeholder(tf.float32, shape=(config.batch_size),name='singer_placeholder')
         self.speaker_onehot_labels_1 = tf.one_hot(indices=tf.cast(self.speaker_labels_1, tf.int32), depth = config.num_singers)
 
-        self.notes_placeholder = tf.placeholder(tf.float32, shape=(config.batch_size, config.max_phr_len, 1),
+        self.notes_placeholder = tf.placeholder(tf.float32, shape=(config.batch_size, config.max_phr_len, 2),
                                            name='notes_placeholder')       
 
         self.f0_placeholder = tf.placeholder(tf.float32, shape=(config.batch_size, config.max_phr_len, 1),
@@ -341,7 +341,7 @@ class AutoVC(model.Model):
         out_mel, out_f0, out_vuv = self.process_file(mel, speaker_index, speaker_index_2, notes, self.sess)
 
         plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]},\
-         "F0": {"gt": mel[:,-2], "op": out_f0, "notes": notes}, "Vuv": {"gt": mel[:,-1], "op": out_vuv}}
+         "F0": {"gt": mel[:,-2], "op": out_f0, "notes": notes[:,0]}, "Vuv": {"gt": mel[:,-1], "op": out_vuv}}
 
 
         self.plot_features(plot_dict)
@@ -419,7 +419,7 @@ class AutoVC(model.Model):
 
         out_batches_mel = out_batches_mel*(max_feat[:-2] - min_feat[:-2]) + min_feat[:-2]
 
-        out_batches_f0 = out_batches_f0*(max_feat[-2] - min_feat[-2]) + min_feat[-2]
+        out_batches_f0 = np.clip(out_batches_f0, 0.0, 1.0)*(max_feat[-2] - min_feat[-2]) + min_feat[-2]
 
         out_batches_vuv = out_batches_vuv*(max_feat[-1] - min_feat[-1]) + min_feat[-1]
 
@@ -453,7 +453,7 @@ class AutoVC(model.Model):
 
 
         with tf.variable_scope('F0_Model') as scope:
-            self.f0 = modules_notes.f0_model(self.output, self.notes_placeholder, self.speaker_onehot_labels_1, self.is_train)
+            self.f0 = modules_notes.f0_model(self.content_embedding_1, self.notes_placeholder, self.speaker_onehot_labels_1, self.is_train)
         with tf.variable_scope('Vuv_Model') as scope:
             self.vuv = modules_notes.vuv_model(self.output, self.notes_placeholder, self.f0, self.is_train)
 
