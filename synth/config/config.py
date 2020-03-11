@@ -1,5 +1,6 @@
 import configparser
 import os
+import pandas as pd
 
 if 'CONFIG_PATH' in os.environ.keys():
     config_path = os.environ['CONFIG_PATH']
@@ -47,10 +48,15 @@ bach_singers = bach_params['singers'].split(', ')
 
 with open('/home/pc2752/share/final_research/singers_DAMP.txt') as damp_file:
     damp_singers = damp_file.read().split(', ')
+    wav_dir = raw_dirs['damp_intonation']
+    df = pd.read_csv(os.path.join(wav_dir, "intonation.csv"))
+    damp_singers = [x for x in damp_singers if df[df[" account_id"] == " {}".format(x)][' locale'].values[0].strip().split("_")[0] == "en"][:100]
+    # import pdb;pdb.set_trace()
 
 feature_params = config["feature_params"]
 feats_dir = "{}_{}_{}_{}".format(feature_params['feats_dir'], fs, hopsize, framesize)
 output_dir = feature_params['output_dir']
+backing_dir = "{}_{}_{}_{}".format(feature_params['backing_dir'], fs, hopsize, framesize)
 
 
 datasets_params = config["datasets"]
@@ -79,6 +85,7 @@ csd_prep = data_prep.getboolean("CSD")
 jvs_prep = data_prep.getboolean("JVS")
 damp_prep = data_prep.getboolean("DAMP")
 bach_prep = data_prep.getboolean("BACH")
+musdb_prep = data_prep.getboolean("MUSDB")
 
 stat_params = config["stat_prep"]
 stat_prep = stat_params.getboolean("prep")
@@ -112,6 +119,7 @@ encoder_layers = int(SDN_params["encoder_layers"])
 filters = int(SDN_params["filters"])
 augment_filters_every = int(SDN_params["augment_filters_every"])
 noise_threshold = float(SDN_params["noise_threshold"])
+back_threshold = float(SDN_params["back_threshold"])
 SDN_num_epochs = int(SDN_params["num_epochs"])
 
 

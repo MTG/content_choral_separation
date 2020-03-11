@@ -458,7 +458,7 @@ class SDN(model.Model):
 
         f1 = vamp_notes.note2traj(f0, timestamps)
 
-        f1 = sig_process.process_pitch(f1)
+        f1 = sig_process.process_pitch(f1[:,0])
 
         out_mel, out_f0, out_vuv = self.process_file(stft, speaker_index, self.sess)
 

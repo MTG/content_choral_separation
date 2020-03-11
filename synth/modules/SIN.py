@@ -67,6 +67,18 @@ def bi_static_stacked_RNN(x, scope='RNN', lstm_size = config.autovc_lstm_size):
 
         return output
 
+def RNN(x, scope='RNN'):
+    with tf.variable_scope(scope):
+        x = tf.unstack(x, config.max_phr_len, 1)
+
+        lstm_cell = rnn.BasicLSTMCell(num_units=config.autovc_lstm_size)
+
+        # Get lstm cell output
+        outputs, states = tf.contrib.rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
+        outputs=tf.stack(outputs)
+        outputs = tf.transpose(outputs, [1,0,2])
+
+    return outputs
 
 def content_encoder_stft(inputs, is_train):
 
@@ -93,10 +105,6 @@ def content_encoder_stft(inputs, is_train):
         emb.append(tf.concat([lstm_fow[:, i*config.autovc_code_sam,:], lstm_back[:, (i+1)*config.autovc_code_sam-1, :]], axis = -1))
     emb = tf.stack(emb)
 
-    return emb
-
-def decoder(emb, stft, is_train):
-
 
     embo = tf.tile(tf.reshape(emb[0],[config.batch_size,1,-1]),[1,config.autovc_code_sam,1])
 
@@ -105,7 +113,16 @@ def decoder(emb, stft, is_train):
 
         embo = tf.concat([embo, embs], axis = 1)
 
-    inputs = tf.concat([embo, stft], axis = -1)
+
+    emb = bi_static_stacked_RNN(tf.squeeze(embo), scope = "Encode_emb")
+
+    return emb
+
+
+def decoder(emb, stft, is_train):
+
+
+    inputs = tf.concat([emb, stft], axis = -1)
 
     lstm_op_1 = RNN(inputs, scope = "Decode_1")
 
@@ -127,3 +144,4 @@ def decoder(emb, stft, is_train):
 
 
     return output
+

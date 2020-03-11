@@ -15,13 +15,15 @@ from synth.config import config
 from . import model
 from synth.modules import autovc as modules_autovc
 from synth.modules import SIN as modules_SIN
-from synth.utils import utils, sig_process
+from synth.modules import SDN as modules_SDN
+from synth.utils import utils, sig_process, midi_process, vamp_notes
 
 
 
-            
+def binary_cross(p,q):
+    return -(p * tf.log(q + 1e-12) + (1 - p) * tf.log( 1 - q + 1e-12))               
 
-class SDN(model.Model):
+class SIN(model.Model):
 
     def __init__(self):
         self.check_prep()
@@ -44,7 +46,7 @@ class SDN(model.Model):
 
         self.auto_saver = tf.train.Saver(max_to_keep= config.max_models_to_keep, var_list = auto_var_list)
 
-        self.stft_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='stft_encoder') + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='stft_decoder') + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='stft_post_net')
+        self.stft_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='stft_encoder') + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='stft_decoder') + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='stft_post_net') + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,scope = 'F0_Model') + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,scope = 'Vuv_Model')
 
         self.stft_saver = tf.train.Saver(max_to_keep= config.max_models_to_keep, var_list = self.stft_var_list)
 
@@ -74,13 +76,22 @@ class SDN(model.Model):
         """
 
         self.optimizer = tf.train.AdamOptimizer(learning_rate = config.init_lr)
+        self.f0_optimizer = tf.train.AdamOptimizer(learning_rate = config.init_lr)
+        self.vuv_optimizer = tf.train.AdamOptimizer(learning_rate = config.init_lr)
 
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
+        self.global_step_f0 = tf.Variable(0, name='global_step_f0', trainable=False)
+        self.global_step_vuv = tf.Variable(0, name='global_step_vuv', trainable=False)
 
+        self.harm_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='stft_encoder') + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='stft_decoder') + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='stft_post_net')
+        self.f0_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,scope = 'F0_Model')
+        self.vuv_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,scope = 'Vuv_Model')
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
-            self.final_train_function = self.optimizer.minimize(self.final_loss, global_step = self.global_step)
+            self.final_train_function = self.optimizer.minimize(self.final_loss, global_step=self.global_step, var_list=self.harm_params)
+            self.f0_train_function = self.f0_optimizer.minimize(self.f0_loss, global_step=self.global_step_f0, var_list=self.f0_params)
+            self.vuv_train_function = self.vuv_optimizer.minimize(self.vuv_loss, global_step=self.global_step_vuv, var_list=self.vuv_params)
 
 
     def loss_function(self):
@@ -102,7 +113,13 @@ class SDN(model.Model):
 
         self.final_loss = self.recon_loss + config.mu * self.recon_loss_0 + config.lamda * self.content_loss
 
-        summary_dict = {"recon_loss" : self.recon_loss, "content_loss": self.content_loss, "recon_loss_0": self.recon_loss_0, "final_loss": self.final_loss}
+        self.vuv_loss = tf.reduce_mean(tf.reduce_mean(binary_cross(self.vuv_placeholder, self.vuv)))
+
+        self.f0_loss = tf.reduce_sum(tf.abs(self.f0 - self.f0_placeholder)*(1-self.vuv_placeholder)) 
+
+        summary_dict = {"recon_loss" : self.recon_loss, "content_loss": self.content_loss, "recon_loss_0": self.recon_loss_0, "final_loss": self.final_loss,\
+         "f0_loss": self.f0_loss, "vuv_loss": self.vuv_loss}
+
 
         return summary_dict
 
@@ -129,6 +146,10 @@ class SDN(model.Model):
 
         self.speaker_labels_1 = tf.placeholder(tf.float32, shape=(config.batch_size),name='singer_placeholder')
         self.speaker_onehot_labels_1 = tf.one_hot(indices=tf.cast(self.speaker_labels_1, tf.int32), depth = config.num_singers)
+
+        self.vuv_placeholder = tf.placeholder(tf.float32, shape=(config.batch_size,config.max_phr_len,1),name='vuv_placeholder')
+
+        self.f0_placeholder = tf.placeholder(tf.float32, shape=(config.batch_size,config.max_phr_len,1),name='f0_placeholder')
 
         self.is_train = tf.placeholder(tf.bool, name="is_train")
 
@@ -243,10 +264,11 @@ class SDN(model.Model):
         """
 
 
-        feed_dict = {self.input_placeholder: feats_targs, self.stft_placeholder: stft_targs, self.stft_placeholder_1: stft_targs, self.speaker_labels:targets_speakers, self.speaker_labels_1:targets_speakers,  self.is_train: True}
+        feed_dict = {self.input_placeholder: feats_targs[:,:,:64], self.stft_placeholder: stft_targs, self.stft_placeholder_1: stft_targs, self.speaker_labels:targets_speakers, self.speaker_labels_1:targets_speakers,\
+        self.f0_placeholder: feats_targs[:,:,-2:-1], self.vuv_placeholder: feats_targs[:,:,-1:], self.is_train: True}
 
             
-        _, final_loss, recon_loss, recon_loss_0, content_loss = sess.run([self.final_train_function,self.final_loss, self.recon_loss, self.recon_loss_0, self.content_loss], feed_dict=feed_dict)
+        _,_,_, final_loss, recon_loss, recon_loss_0, content_loss = sess.run([self.final_train_function, self.f0_train_function, self.vuv_train_function, self.final_loss, self.recon_loss, self.recon_loss_0, self.content_loss], feed_dict=feed_dict)
 
         summary_str = sess.run(self.summary, feed_dict=feed_dict)
 
@@ -260,8 +282,8 @@ class SDN(model.Model):
         """
 
 
-        feed_dict = {self.input_placeholder: feats_targs, self.stft_placeholder: stft_targs, self.stft_placeholder_1: stft_targs, self.speaker_labels:targets_speakers, self.speaker_labels_1:targets_speakers,  self.is_train: False}
-
+        feed_dict = {self.input_placeholder: feats_targs[:,:,:64], self.stft_placeholder: stft_targs, self.stft_placeholder_1: stft_targs, self.speaker_labels:targets_speakers, self.speaker_labels_1:targets_speakers,\
+        self.f0_placeholder: feats_targs[:,:,-2:-1], self.vuv_placeholder: feats_targs[:,:,-1:], self.is_train: False}
             
         final_loss, recon_loss, recon_loss_0, content_loss = sess.run([self.final_loss, self.recon_loss, self.recon_loss_0, self.content_loss], feed_dict=feed_dict)
 
@@ -269,6 +291,7 @@ class SDN(model.Model):
 
 
         return final_loss, recon_loss, recon_loss_0, content_loss, summary_str
+
 
 
 
@@ -318,7 +341,7 @@ class SDN(model.Model):
 
 
 
-    def test_file_wav(self, file_name, speaker_index):
+    def test_file_wav(self, file_name):
         """
         Function to extract multi pitch from file. Currently supports only HDF5 files.
         """
@@ -329,9 +352,10 @@ class SDN(model.Model):
 
         mel, stft = self.read_wav_file(file_name)
 
-        out_mel = self.process_file(stft, speaker_index, self.sess)
+        out_mel, out_f0, out_vuv = self.process_file(stft,  self.sess)
 
-        plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]}}
+        plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]},\
+         "F0": {"gt": mel[:,-2], "op": out_f0}, "Vuv": {"gt": mel[:,-1], "op": out_vuv}}
 
 
         self.plot_features(plot_dict)
@@ -343,19 +367,12 @@ class SDN(model.Model):
         file_name = file_name.split('/')[-1]
 
         if synth:
-            gen_change = utils.query_yes_no("Change in gender? ")
-            if gen_change:
-                female_male = utils.query_yes_no("Female to male?")
-                if female_male:
-                    out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1]-12, mel[:out_mel.shape[0],-1:]), axis = -1)
-                else:
-                    out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1]+12, mel[:out_mel.shape[0],-1:]), axis = -1)
-            else:
-                out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1], mel[:out_mel.shape[0],-1:]), axis = -1)
+
+            out_featss = np.concatenate((out_mel, out_f0, out_vuv), axis = -1)
 
             audio_out = sig_process.feats_to_audio(out_featss) 
 
-            sf.write(os.path.join(config.output_dir,'{}_{}_SIN.wav'.format(file_name[:-4], config.singers[speaker_index_2])), audio_out, config.fs)
+            sf.write(os.path.join(config.output_dir,'{}_SIN.wav'.format(file_name[:-4])), audio_out, config.fs)
 
         synth_ori = utils.query_yes_no("Synthesize ground truth with vocoder? ")
 
@@ -365,7 +382,7 @@ class SDN(model.Model):
 
 
 
-    def test_file_hdf5(self, file_name, speaker_index_2):
+    def test_file_hdf5(self, file_name):
         """
         Function to extract multi pitch from file. Currently supports only HDF5 files.
         """
@@ -373,27 +390,18 @@ class SDN(model.Model):
 
         mel, stft = self.read_hdf5_file(file_name)
 
-        out_mel = self.process_file(stft, speaker_index_2, self.sess)
+        out_mel, out_f0, out_vuv = self.process_file(stft,  self.sess)
 
-        plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]}}
-
-
-        self.plot_features(plot_dict)
+        plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]},\
+         "F0": {"gt": mel[:,-2], "op": out_f0}, "Vuv": {"gt": mel[:,-1], "op": out_vuv}}
 
 
 
         synth = utils.query_yes_no("Synthesize output? ")
 
         if synth:
-            gen_change = utils.query_yes_no("Change in gender? ")
-            if gen_change:
-                female_male = utils.query_yes_no("Female to male?")
-                if female_male:
-                    out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1]-12, mel[:out_mel.shape[0],-1:]), axis = -1)
-                else:
-                    out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1]+12, mel[:out_mel.shape[0],-1:]), axis = -1)
-            else:
-                out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1], mel[:out_mel.shape[0],-1:]), axis = -1)
+
+            out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1], mel[:out_mel.shape[0],-1:]), axis = -1)
 
             audio_out = sig_process.feats_to_audio(out_featss) 
 
@@ -405,9 +413,50 @@ class SDN(model.Model):
             audio = sig_process.feats_to_audio(mel) 
             sf.write(os.path.join(config.output_dir,'{}_ori.wav'.format(file_name[:-4])), audio, config.fs)
 
+    def test_file_wav_f0(self, file_name, f0_file):
+        """
+        Function to extract multi pitch from file. Currently supports only HDF5 files.
+        """
 
 
-    def process_file(self, mel, speaker_index_2, sess):
+        mel, stft = self.read_wav_file(file_name)
+
+        f0 = midi_process.open_f0_file(f0_file)
+
+        timestamps = np.arange(0, len(mel)*config.hoptime, config.hoptime)
+
+
+        f1 = vamp_notes.note2traj(f0, timestamps)
+
+        f1 = sig_process.process_pitch(f1[:,0])
+
+        out_mel, out_f0, out_vuv = self.process_file(stft, self.sess)
+
+        plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]},\
+         "F0": {"gt": f1[:,0], "op": out_f0}, "Vuv": {"gt": mel[:,-1], "op": out_vuv}}
+
+
+        self.plot_features(plot_dict)
+
+        synth = utils.query_yes_no("Synthesize output? ")
+
+        file_name = file_name.split('/')[-1]
+
+        if synth:
+
+            out_featss = np.concatenate((out_mel[:f1.shape[0]], f1), axis = -1)
+
+            audio_out = sig_process.feats_to_audio(out_featss) 
+
+            sf.write(os.path.join(config.output_dir,'{}_SIN_f0_{}.wav'.format(file_name[:-4], f0_file.split('/')[-1])), audio_out, config.fs)
+
+        synth_ori = utils.query_yes_no("Synthesize ground truth with vocoder? ")
+
+        if synth_ori:
+            audio = sig_process.feats_to_audio(mel) 
+            sf.write(os.path.join(config.output_dir,'{}_ori.wav'.format(file_name[:-4])), audio, config.fs)
+
+    def process_file(self, mel,  sess):
 
         datasets = "".join("_"+x.lower() for x in config.datasets)
 
@@ -417,24 +466,38 @@ class SDN(model.Model):
 
         mel = np.clip(mel, 0.0, 1.0)
 
-
         in_batches_mel, nchunks_in = utils.generate_overlapadd(mel)
 
         out_batches_mel = []
+        out_batches_f0 = []
+        out_batches_vuv = []
 
         for in_batch_mel in in_batches_mel :
-            speaker_2 = np.repeat(speaker_index_2, config.batch_size)
-            feed_dict = {self.stft_placeholder: in_batch_mel, self.speaker_labels_1:speaker_2, self.is_train: False}
-            mel = sess.run(self.output_stft, feed_dict=feed_dict)
+            feed_dict = {self.stft_placeholder: in_batch_mel, self.stft_placeholder_1: in_batch_mel, self.is_train: False}
+            mel, f0, vuv = sess.run([self.output_stft, self.f0, self.vuv], feed_dict=feed_dict)
 
             out_batches_mel.append(mel)
+            out_batches_f0.append(f0)
+            out_batches_vuv.append(vuv)
+
         out_batches_mel = np.array(out_batches_mel)
+        out_batches_f0 = np.array(out_batches_f0)
+        out_batches_vuv = np.array(out_batches_vuv)
 
         out_batches_mel = utils.overlapadd(out_batches_mel,nchunks_in)
+        out_batches_f0 = utils.overlapadd(out_batches_f0,nchunks_in)
+        out_batches_vuv = utils.overlapadd(out_batches_vuv,nchunks_in)
+
 
         out_batches_mel = out_batches_mel*(max_feat[:-2] - min_feat[:-2]) + min_feat[:-2]
 
-        return out_batches_mel
+        out_batches_f0 = out_batches_f0*(max_feat[-2] - min_feat[-2]) + min_feat[-2]
+
+        out_batches_vuv = out_batches_vuv*(max_feat[-1] - min_feat[-1]) + min_feat[-1]
+
+        out_batches_vuv = np.round(out_batches_vuv)
+
+        return out_batches_mel, out_batches_f0, out_batches_vuv
 
 
 
@@ -475,3 +538,9 @@ class SDN(model.Model):
         with tf.variable_scope('encoder') as scope:
             scope.reuse_variables()
             self.content_embedding_stft_2 = modules_autovc.content_encoder(self.output_stft, self.speaker_onehot_labels, self.is_train)
+
+        with tf.variable_scope('F0_Model') as scope:
+            self.f0 = modules_SDN.enc_dec_f0(self.stft_placeholder, self.output_stft[:,:,:-4], self.output_stft[:,:,-4:], self.is_train)
+        with tf.variable_scope('Vuv_Model') as scope:
+            self.vuv = modules_SDN.enc_dec_vuv(self.stft_placeholder, self.output_stft[:,:,:-4], self.output_stft[:,:,-4:], self.f0, self.is_train)
+
