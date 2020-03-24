@@ -93,12 +93,13 @@ def data_gen_SDN(mode = 'Train', sec_mode = 0):
             for j in range(config.autovc_samples_per_file):
                 voc_idx = np.random.randint(0,len(mel)-config.max_phr_len)
                 feats_targs.append(mel[voc_idx:voc_idx+config.max_phr_len])
-                noise = np.random.rand(config.max_phr_len,stfts.shape[-1])*np.clip(np.random.rand(1),0.0,config.noise_threshold)
-                stft = stfts[voc_idx:voc_idx+config.max_phr_len]*np.clip(np.random.rand(1),0.5,1.0) + noise
+                noise = np.random.rand(config.max_phr_len,stfts.shape[-1])*np.random.uniform(0.0,config.noise_threshold)
+                back_gain = np.random.uniform(0.0, config.back_threshold)
+                stft = stfts[voc_idx:voc_idx+config.max_phr_len]*np.random.uniform(back_gain, 1.0) + noise
                 if config.SDN_mix:
                     back_idx = np.random.randint(0,len(back)-config.max_phr_len)
                     back_sample = back[back_idx:back_idx+config.max_phr_len]
-                    stft = stft + back_sample *np.clip(np.random.rand(1),0.0,config.back_threshold)
+                    stft = stft + back_sample * back_gain
 
                 stfts_targs.append(stft)
                 targets_speakers.append(speaker_index)

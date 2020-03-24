@@ -114,5 +114,7 @@ def open_f0_file(filename):
     with open(filename, "r") as lab_f:
         phos = lab_f.readlines()
         phos2 = [x.split() for x in phos]
-        phos3 = np.array([[float(x[0]), float(x[0]) + 0.005804988, float(x[1])] for x in phos2])
+        popo = [float(x[0]) for x in phos2]
+        diff = popo[1] - popo[0]
+        phos3 = np.array([[float(x[0]), float(x[0]) + diff, float(x[1])] for x in phos2])
     return phos3

@@ -80,6 +80,7 @@ class Model(object):
         """
         checkpoint_file = os.path.join(log_dir, 'model.ckpt')
         self.saver.save(sess, checkpoint_file, global_step=epoch)
+        print("Model saved at epoch {}".format(epoch))
 
     def print_summary(self, print_dict, epoch, duration):
         """
@@ -103,6 +104,10 @@ class Model(object):
         self.train_summary_writer = tf.summary.FileWriter(log_dir+'/train/', sess.graph)
         self.val_summary_writer = tf.summary.FileWriter(log_dir+'/val/', sess.graph)
         self.summary = tf.summary.merge_all()
+
+    # def find_gender(self, singer_name):
+
+
 
     def plot_features(self, feat_dict):
         """

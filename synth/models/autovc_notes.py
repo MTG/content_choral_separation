@@ -29,10 +29,13 @@ class AutoVC(model.Model):
         self.get_placeholders()
         self.model()
         self.sess = tf.Session()
+        # import pdb;pdb.set_trace()
+        # devices = self.sess.list_devices()
         summary_dict = self.loss_function()
         self.get_optimizers()
         self.get_summary(self.sess, config.autovc_notes_log_dir, summary_dict)
         self.load_model(self.sess, config.autovc_notes_log_dir)
+        
 
     def get_optimizers(self):
         """
@@ -336,10 +339,14 @@ class AutoVC(model.Model):
 
         speaker_name = file_name.split('_')[1]
         speaker_index = config.singers.index(speaker_name)
-
+        speaker_gender = config.genders[speaker_name]
+        print("Original singer is {}, a human {}".format(speaker_name, speaker_gender))
 
         out_mel, out_f0, out_vuv = self.process_file(mel, speaker_index, speaker_index_2, notes, self.sess)
 
+        speaker_2_gender = config.genders[config.singers[speaker_index_2]]
+        print("Target singer is {}, a human {}".format(config.singers[speaker_index_2], speaker_2_gender))
+        
         plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]},\
          "F0": {"gt": mel[:,-2], "op": out_f0, "notes": notes[:,0]}, "Vuv": {"gt": mel[:,-1], "op": out_vuv}}
 
@@ -351,13 +358,10 @@ class AutoVC(model.Model):
         synth = utils.query_yes_no("Synthesize output? ")
 
         if synth:
-            gen_change = utils.query_yes_no("Change in gender? ")
-            if gen_change:
-                female_male = utils.query_yes_no("Female to male?")
-                if female_male:
-                    out_featss = np.concatenate((out_mel, out_f0-12, out_vuv), axis = -1)
-                else:
-                    out_featss = np.concatenate((out_mel, out_f0+12, out_vuv), axis = -1)
+            if speaker_gender == "F" and speaker_2_gender == "M":
+                out_featss = np.concatenate((out_mel, out_f0-12, out_vuv), axis = -1)
+            elif speaker_gender == "M" and speaker_2_gender == "F":
+                out_featss = np.concatenate((out_mel, out_f0+12, out_vuv), axis = -1)
             else:
                 out_featss = np.concatenate((out_mel, out_f0, out_vuv), axis = -1)
 

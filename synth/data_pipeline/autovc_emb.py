@@ -64,10 +64,6 @@ def data_gen_vc(mode = 'Train', sec_mode = 0):
 
             mel[:,-2] = f0
 
-            if np.isnan(mel).any():
-                print("nan found")
-                import pdb;pdb.set_trace()
-
             speaker_name = voc_to_open.split('_')[1]
             # if config.autovc_mix_emb:
             speaker_file = [x for x in os.listdir(config.emb_dir) if x.endswith('npy') and x.split('_')[1] == speaker_name]

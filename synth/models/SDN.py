@@ -170,11 +170,15 @@ class SDN(model.Model):
             epoch_recon_loss = 0
             epoch_recon_0_loss = 0
             epoch_content_loss = 0
+            epoch_f0_loss = 0 
+            epoch_vuv_loss = 0
 
             val_final_loss = 0
             val_recon_loss = 0
             val_recon_0_loss = 0
             val_content_loss = 0
+            val_f0_loss = 0 
+            val_vuv_loss = 0
 
             batch_num = 0
 
@@ -184,12 +188,14 @@ class SDN(model.Model):
                 for feats_targs, stft_targs, targets_speakers in data_generator:
 
 
-                    final_loss, recon_loss, recon_loss_0, content_loss,  summary_str = self.train_model(feats_targs, stft_targs, targets_speakers, self.sess)
+                    final_loss, recon_loss, recon_loss_0, content_loss, f0_loss, vuv_loss,  summary_str = self.train_model(feats_targs, stft_targs, targets_speakers, self.sess)
 
                     epoch_final_loss+=final_loss
                     epoch_recon_loss+=recon_loss
                     epoch_recon_0_loss+=recon_loss_0
                     epoch_content_loss+=content_loss
+                    epoch_f0_loss+=f0_loss
+                    epoch_vuv_loss+=vuv_loss
 
                     self.train_summary_writer.add_summary(summary_str, epoch)
                     self.train_summary_writer.flush()
@@ -202,13 +208,16 @@ class SDN(model.Model):
                 epoch_recon_loss = epoch_recon_loss/batch_num
                 epoch_recon_0_loss = epoch_recon_0_loss/batch_num
                 epoch_content_loss = epoch_content_loss/batch_num
+                epoch_f0_loss = epoch_f0_loss/batch_num
+                epoch_vuv_loss = epoch_vuv_loss/batch_num
 
                 print_dict = {"Final Loss": epoch_final_loss}
 
                 print_dict["Recon Loss"] =  epoch_recon_loss
                 print_dict["Recon Loss_0 "] =  epoch_recon_0_loss
                 print_dict["Content Loss"] =  epoch_content_loss
-
+                print_dict["F0 Loss "] =  epoch_f0_loss
+                print_dict["VUV Loss"] =  epoch_vuv_loss
 
 
 
@@ -217,12 +226,14 @@ class SDN(model.Model):
                 for feats_targs, stft_targs, targets_speakers in val_generator:
 
 
-                    final_loss, recon_loss, recon_loss_0, content_loss,  summary_str = self.validate_model(feats_targs, stft_targs, targets_speakers, self.sess)
+                    final_loss, recon_loss, recon_loss_0, content_loss, f0_loss, vuv_loss,  summary_str = self.validate_model(feats_targs, stft_targs, targets_speakers, self.sess)
 
                     val_final_loss+=final_loss
                     val_recon_loss+=recon_loss
                     val_recon_0_loss+=recon_loss_0
                     val_content_loss+=content_loss
+                    val_f0_loss+=f0_loss
+                    val_vuv_loss+=vuv_loss
 
                     self.val_summary_writer.add_summary(summary_str, epoch)
                     self.val_summary_writer.flush()
@@ -235,13 +246,16 @@ class SDN(model.Model):
                 val_recon_loss = val_recon_loss/batch_num
                 val_recon_0_loss = val_recon_0_loss/batch_num
                 val_content_loss = val_content_loss/batch_num
-
+                val_f0_loss = val_f0_loss/batch_num
+                val_vuv_loss = val_vuv_loss/batch_num
+                
                 print_dict["Val Final Loss"] = val_final_loss
 
                 print_dict["Val Recon Loss"] =  val_recon_loss
                 print_dict["Val Recon Loss_0 "] =  val_recon_0_loss
                 print_dict["Val Content Loss"] =  val_content_loss
-
+                print_dict["Val F0 Loss "] =  val_f0_loss
+                print_dict["Val VUV Loss"] =  val_vuv_loss
 
 
             end_time = time.time()
@@ -261,12 +275,12 @@ class SDN(model.Model):
         self.f0_placeholder: feats_targs[:,:,-2:-1], self.vuv_placeholder: feats_targs[:,:,-1:], self.is_train: True}
 
             
-        _,_,_, final_loss, recon_loss, recon_loss_0, content_loss = sess.run([self.final_train_function, self.f0_train_function, self.vuv_train_function, self.final_loss, self.recon_loss, self.recon_loss_0, self.content_loss], feed_dict=feed_dict)
+        _,_,_, final_loss, recon_loss, recon_loss_0, content_loss, f0_loss, vuv_loss = sess.run([self.final_train_function, self.f0_train_function, self.vuv_train_function, self.final_loss, self.recon_loss, self.recon_loss_0, self.content_loss, self.f0_loss, self.vuv_loss], feed_dict=feed_dict)
 
         summary_str = sess.run(self.summary, feed_dict=feed_dict)
 
 
-        return final_loss, recon_loss, recon_loss_0, content_loss, summary_str
+        return final_loss, recon_loss, recon_loss_0, content_loss, f0_loss, vuv_loss, summary_str
  
 
     def validate_model(self,feats_targs, stft_targs, targets_speakers, sess):
@@ -278,12 +292,12 @@ class SDN(model.Model):
         feed_dict = {self.input_placeholder: feats_targs[:,:,:64], self.stft_placeholder: stft_targs, self.speaker_labels:targets_speakers, self.speaker_labels_1:targets_speakers,\
         self.f0_placeholder: feats_targs[:,:,-2:-1], self.vuv_placeholder: feats_targs[:,:,-1:], self.is_train: False}
             
-        final_loss, recon_loss, recon_loss_0, content_loss = sess.run([self.final_loss, self.recon_loss, self.recon_loss_0, self.content_loss], feed_dict=feed_dict)
+        final_loss, recon_loss, recon_loss_0, content_loss, f0_loss, vuv_loss = sess.run([self.final_loss, self.recon_loss, self.recon_loss_0, self.content_loss, self.f0_loss, self.vuv_loss], feed_dict=feed_dict)
 
         summary_str = sess.run(self.summary, feed_dict=feed_dict)
 
 
-        return final_loss, recon_loss, recon_loss_0, content_loss, summary_str
+        return final_loss, recon_loss, recon_loss_0, content_loss, f0_loss, vuv_loss, summary_str
 
 
 

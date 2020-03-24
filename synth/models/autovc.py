@@ -288,7 +288,12 @@ class AutoVC(model.Model):
         speaker_name = file_name.split('_')[1]
         speaker_index = config.singers.index(speaker_name)
 
+        speaker_gender = config.genders[speaker_name]
+        print("Original singer is {}, a human {}".format(speaker_name, speaker_gender))
 
+        speaker_2_gender = config.genders[config.singers[speaker_index_2]]
+        print("Target singer is {}, a human {}".format(config.singers[speaker_index_2], speaker_2_gender))
+        
         out_mel = self.process_file(mel, speaker_index, speaker_index_2, self.sess)
 
         plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]}}
@@ -301,13 +306,10 @@ class AutoVC(model.Model):
         synth = utils.query_yes_no("Synthesize output? ")
 
         if synth:
-            gen_change = utils.query_yes_no("Change in gender? ")
-            if gen_change:
-                female_male = utils.query_yes_no("Female to male?")
-                if female_male:
-                    out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1]-12, mel[:out_mel.shape[0],-1:]), axis = -1)
-                else:
-                    out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1]+12, mel[:out_mel.shape[0],-1:]), axis = -1)
+            if speaker_gender == "F" and speaker_2_gender == "M":
+                out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1]-12, mel[:out_mel.shape[0],-1:]), axis = -1)
+            elif speaker_gender == "M" and speaker_2_gender == "F":
+                out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1]+12, mel[:out_mel.shape[0],-1:]), axis = -1)
             else:
                 out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1], mel[:out_mel.shape[0],-1:]), axis = -1)
 
