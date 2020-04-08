@@ -35,9 +35,9 @@ from synth.data_pipeline import autovc_notes_emb
 # synth_SDN.synthesize_wav("../datasets/EsmucChoralSet/2_SeeleChristi/IsolatedSections/SC3_tenors1/SC3_tenors1_AB.wav", 1)
 # features = [val for sublist in [x['feats'] for x in [output_dir[y] for y in output_dir.keys()]] for val in sublist] 
 # feats = [val for sublist in features for val in sublist] 
-# audio, fs = librosa.core.load("../datasets/mer_sep_acp/AllAlongTheWatchtower_1.wav", sr=config.fs)
+audio, fs = librosa.core.load("../datasets/mer_sep_acp/AllAlongTheWatchtower_1.wav", sr=config.fs)
 model = SIN.SIN()
-model.save_f0_wav('../datasets/unisons/CSD_ER_3sopranos.wav')
+# model.save_f0_wav('../datasets/unisons/CSD_ER_3sopranos.wav')
 # model.test_file_wav_f0('../datasets/unisons/CSD_ER_3sopranos.wav', "../datasets/unisons/CSD_ER_3sopranos_CREPE.f0")
-# feats = model.extract_feature_wav(audio)
-# import pdb;pdb.set_trace()
+feats = model.extract_feature_wav(audio)
+import pdb;pdb.set_trace()
