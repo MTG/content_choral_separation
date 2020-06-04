@@ -9,6 +9,7 @@ import soundfile as sf
 import matplotlib.pyplot as plt
 import time
 import h5py
+import random
 
 from synth.data_pipeline import autovc as data_pipeline
 from synth.config import config
@@ -52,6 +53,8 @@ class AutoVC(model.Model):
         returns the loss function for the model, based on the mode. 
         """
 
+
+
         self.recon_loss = tf.reduce_sum(tf.square(self.input_placeholder - self.output) ) 
 
 
@@ -75,7 +78,6 @@ class AutoVC(model.Model):
 
         self.input_placeholder = tf.placeholder(tf.float32, shape=(config.batch_size, config.max_phr_len, config.num_features),
                                            name='input_placeholder')       
-
 
         self.speaker_labels = tf.placeholder(tf.float32, shape=(config.batch_size),name='singer_placeholder')
         self.speaker_onehot_labels = tf.one_hot(indices=tf.cast(self.speaker_labels, tf.int32), depth = config.num_singers)
@@ -254,9 +256,11 @@ class AutoVC(model.Model):
         else: 
             vocals = np.array(audio)
 
-        voc_stft = abs(utils.stft(vocals))
+        voc_stft = abs(np.array(utils.stft(audio, hopsize=config.hopsize, nfft=config.framesize, fs=config.fs)))
 
-        feats = utils.stft_to_feats(vocals,fs)
+        # import pdb;pdb.set_trace()
+
+        feats = sig_process.get_world_feats(audio)
 
         voc_stft = np.clip(voc_stft, 0.0, 1.0)
 
@@ -264,18 +268,159 @@ class AutoVC(model.Model):
 
 
 
-    def test_file_wav(self, file_name, speaker_index):
+    def test_file_wav(self, file_name, speaker_index_1, speaker_index):
         """
         Function to extract multi pitch from file. Currently supports only HDF5 files.
         """
 
+        speaker_gender = config.genders[config.singers[speaker_index_1]]
+        print("Original singer is {}, a human {}".format(config.singers[speaker_index_1], speaker_gender))
+
+        speaker_2_gender = config.genders[config.singers[speaker_index]]
+        print("Target singer is {}, a human {}".format(config.singers[speaker_index], speaker_2_gender))
         stft, mel = self.read_wav_file(file_name)
 
-        out_mel = self.process_file(stft, speaker_index, self.sess)
+        out_mel = self.process_file(mel, speaker_index_1, speaker_index, self.sess)
+
+        plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]}}
 
 
-        self.plot_features(mel, out_mel)
+        self.plot_features(plot_dict)
 
+
+
+        synth = utils.query_yes_no("Synthesize output? ")
+
+        if synth:
+            if speaker_gender == "F" and speaker_2_gender == "M":
+                out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1]-12, mel[:out_mel.shape[0],-1:]), axis = -1)
+            elif speaker_gender == "M" and speaker_2_gender == "F":
+                out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1]+12, mel[:out_mel.shape[0],-1:]), axis = -1)
+            else:
+                out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1], mel[:out_mel.shape[0],-1:]), axis = -1)
+                # 0 = mel[:out_mel.shape[0],-2:-1] + np.random.rand(mel[:out_mel.shape[0],-2:-1].shape[0])* 0.5
+
+            audio_out = sig_process.feats_to_audio(out_featss) 
+
+            sf.write(os.path.join(config.output_dir,'./{}_{}_autovc.wav'.format(file_name[:-5], config.singers[speaker_index])), audio_out, config.fs)
+
+        synth_ori = utils.query_yes_no("Synthesize ground truth with vocoder? ")
+
+        if synth_ori:
+            audio = sig_process.feats_to_audio(mel) 
+            sf.write(os.path.join(config.output_dir,'./{}_{}_ori.wav'.format(file_name[:-5], config.singers[speaker_index_1])), audio, config.fs)
+
+    def solo_unison_file_wav(self, file_name, std=0.5, num_singers=4, timing: int=5):
+        """
+        Function to extract multi pitch from file. Currently supports only HDF5 files.
+        """
+        part = file_name.split('/')[-1].split('_')[1]
+
+        # import pdb;pdb.set_trace()
+        
+        # if part[:-1] not in ["soprano", "alto", "tenor", "bass"] or not file_name.startswith("csd"):
+        #     raise Exception("Input Error")
+
+        if part[:-1] in ["soprano", "alto"]:
+            speaker_indecis = [config.singers.index(x) for x in config.genders.keys() if config.genders[x]=="F" and x in config.nus_singers]
+
+        elif part[:-1] in ["tenor", "bass"]:
+            speaker_indecis = [config.singers.index(x) for x in config.genders.keys() if config.genders[x]=="M" and x in config.nus_singers]
+        # ["tenor", "bass"]
+
+        stft, mel = self.read_wav_file(file_name)
+
+        # import pdb;pdb.set_trace()
+
+
+        speaker_name = file_name.split('/')[-1].split('_')[1]
+        speaker_index = config.singers.index(speaker_name)
+
+        # import pdb;pdb.set_trace()
+
+        # speaker_indecis = [config.singers.index(x) for x in config.singers if x.startswith(part[:-1]) and x != part]
+
+        audio = sig_process.feats_to_audio(mel) 
+        sf.write(os.path.join(config.output_dir,'./{}_ori.wav'.format(file_name.split('/')[-1])), audio, config.fs)
+        stft, mel = self.read_wav_file(file_name)
+        # vuv = mel[:,-1]
+        # diffs = np.diff(vuv)
+        output = audio
+        output_nc = audio
+        for count in range(num_singers):
+            speaker_index_2 = random.choice(speaker_indecis)
+    
+            out_mel = self.process_file(mel, speaker_index, speaker_index_2, self.sess)
+            f0 = mel[:out_mel.shape[0],-2:-1] + np.random.rand(mel[:out_mel.shape[0],-2:-1].shape[0])[:,np.newaxis]* std
+            out_featss = np.concatenate((out_mel[:mel.shape[0]], f0, mel[:out_mel.shape[0],-1:]), axis = -1)
+            out_featss_nochange = np.concatenate((mel[:mel.shape[0]], f0, mel[:out_mel.shape[0],-1:]), axis = -1)
+            if timing>0:
+                out_featss = np.roll(out_featss, np.random.randint(-timing,timing),0)
+                out_featss_nochange = np.roll(out_featss_nochange, np.random.randint(-timing,timing),0)
+            audio_out = sig_process.feats_to_audio(out_featss) 
+            audio_out_nochange = sig_process.feats_to_audio(out_featss_nochange) 
+
+            output = output[:len(audio_out)]
+            output+=audio_out
+            output_nc = output_nc[:len(audio_out_nochange)]
+            output_nc+=audio_out_nochange
+
+        output = output/num_singers
+        output_nc = output_nc/num_singers
+
+        sf.write(os.path.join(config.output_dir,'./{}_{}_{}_{}_unison.wav'.format(file_name.split('/')[-1][:-5], std, num_singers, timing)), output, config.fs)
+        sf.write(os.path.join(config.output_dir,'./{}_{}_{}_{}_unison_notimbre.wav'.format(file_name.split('/')[-1][:-5], std, num_singers, timing)), output_nc, config.fs)
+
+        audio = sig_process.feats_to_audio(mel) 
+
+    def solo_unison_file_hdf5(self, file_name, std=0.5, num_singers=4, timing: int=5):
+        """
+        Function to extract multi pitch from file. Currently supports only HDF5 files.
+        """
+        part = file_name.split('_')[1]
+
+        # import pdb;pdb.set_trace()
+        
+        if part[:-1] not in ["soprano", "alto", "tenor", "bass"] or not file_name.startswith("csd"):
+            raise Exception("Input Error")
+
+        if part[:-1] in ["soprano", "alto"]:
+            speaker_indecis = [config.singers.index(x) for x in config.genders.keys() if config.genders[x]=="F" and x in config.nus_singers]
+
+        elif part[:-1] in ["tenor", "bass"]:
+            speaker_indecis = [config.singers.index(x) for x in config.genders.keys() if config.genders[x]=="M" and x in config.nus_singers]
+        # ["tenor", "bass"]
+
+        stft, mel = self.read_hdf5_file(file_name)
+
+        speaker_name = file_name.split('_')[1]
+        speaker_index = config.singers.index(speaker_name)
+
+        # speaker_indecis = [config.singers.index(x) for x in config.singers if x.startswith(part[:-1]) and x != part]
+
+        audio = sig_process.feats_to_audio(mel) 
+        sf.write(os.path.join(config.output_dir,'./{}_ori.wav'.format(file_name[:-5])), audio, config.fs)
+        mel = self.read_hdf5_file(file_name)
+        # vuv = mel[:,-1]
+        # diffs = np.diff(vuv)
+        output = audio
+        for count in range(num_singers):
+            speaker_index_2 = random.choice(speaker_indecis)
+    
+            out_mel = self.process_file(mel, speaker_index, speaker_index_2, self.sess)
+            f0 = mel[:out_mel.shape[0],-2:-1] + np.random.rand(mel[:out_mel.shape[0],-2:-1].shape[0])[:,np.newaxis]* std
+            out_featss = np.concatenate((mel[:mel.shape[0]], f0, mel[:out_mel.shape[0],-1:]), axis = -1)
+            if timing>0:
+                out_featss = np.roll(out_featss, np.random.randint(-timing,timing),0)
+            audio_out = sig_process.feats_to_audio(out_featss) 
+            output = output[:len(audio_out)]
+            output+=audio_out
+
+        output = output/num_singers
+
+        sf.write(os.path.join(config.output_dir,'./{}_{}_{}_{}_unison_notimbre.wav'.format(file_name[:-5], std, num_singers, timing)), output, config.fs)
+
+        audio = sig_process.feats_to_audio(mel)         
 
 
     def test_file_hdf5(self, file_name, speaker_index_2):
@@ -312,6 +457,7 @@ class AutoVC(model.Model):
                 out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1]+12, mel[:out_mel.shape[0],-1:]), axis = -1)
             else:
                 out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1], mel[:out_mel.shape[0],-1:]), axis = -1)
+                # 0 = mel[:out_mel.shape[0],-2:-1] + np.random.rand(mel[:out_mel.shape[0],-2:-1].shape[0])* 0.5
 
             audio_out = sig_process.feats_to_audio(out_featss) 
 
@@ -322,6 +468,7 @@ class AutoVC(model.Model):
         if synth_ori:
             audio = sig_process.feats_to_audio(mel) 
             sf.write(os.path.join(config.output_dir,'./{}_{}_ori.wav'.format(file_name[:-5], config.singers[speaker_index])), audio, config.fs)
+
 
 
 

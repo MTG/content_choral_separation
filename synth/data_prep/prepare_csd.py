@@ -28,17 +28,20 @@ def walk_directory(song_name: str):
         singer_name = lf.split('_')[1]+lf.split('_')[2].replace('.wav','')
         utils.progress(count, len(sing_wav_files), "folder processed")
         audio, fs = audio_process.load_audio(os.path.join(full_dir, lf))
+        try:
 
-        segments, timestamps, feat, note, stft = audio_process.process_audio(audio)
+            segments, timestamps, feat, note, stft = audio_process.process_audio(audio)
 
-        for j, (fea, nots, stf)  in enumerate(zip(feat, note, stft)):
-            singer_dict = {}
-            feat[j], note[j], stft[j] = utils.match_time([fea, nots, stf])
+            for j, (fea, nots, stf)  in enumerate(zip(feat, note, stft)):
+                singer_dict = {}
+                feat[j], note[j], stft[j] = utils.match_time([fea, nots, stf])
 
-            singer_dict['feats'] = feat[j]
-            singer_dict['notes'] = note[j]
-            singer_dict['stfts'] = stft[j]
-            write_data.write_data(singer_dict, "csd_{}_{}_{}.hdf5".format(singer_name, song_name, j))
+                singer_dict['feats'] = feat[j]
+                singer_dict['notes'] = note[j]
+                singer_dict['stfts'] = stft[j]
+                write_data.write_data(singer_dict, "csd_{}_{}_{}.hdf5".format(singer_name, song_name, j))
+        except:
+            print(lf)
 
 
 

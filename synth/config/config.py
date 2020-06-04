@@ -35,6 +35,7 @@ save_every = int(params["save_every"])
 
 nus_params = config['nus']
 phonemas = nus_params['phonemas'].split(', ')
+phonemas_nus = nus_params['phonemas2'].split(', ')
 nus_singers = nus_params['singers'].split(', ')
 nus_genders = nus_params['genders'].split(', ')
 nus_genders = {a:b for a,b in zip(nus_singers, nus_genders)}
@@ -113,6 +114,7 @@ lamda = int(autovc_params['lambda'])
 mu = int(autovc_params['mu'])
 autovc_log_dir = "{}_{}_{}_{}{}".format(autovc_params['log_dir'], fs, hopsize, framesize, dataset_list)
 autovc_notes_log_dir = "{}_notes_{}_{}_{}{}".format(autovc_params['log_dir'], fs, hopsize, framesize, dataset_list)
+autovc_log_dir_f0 = "{}_f0_{}_{}_{}{}".format(autovc_params['log_dir'], fs, hopsize, framesize, dataset_list)
 autovc_emb_log_dir = "{}_emb_{}_{}_{}{}".format(autovc_params['log_dir'], fs, hopsize, framesize, dataset_list)
 autovc_notes_emb_log_dir = "{}_notes_emb_{}_{}_{}{}".format(autovc_params['log_dir'], fs, hopsize, framesize, '_nus')
 autovc_mix_emb = autovc_params.getboolean("mix_emb")
@@ -126,6 +128,10 @@ if SDN_mix:
 else:
     SDN_log_dir = "{}_{}_{}_{}{}_nomix/".format(SDN_params['log_dir'], fs, hopsize, framesize, dataset_list)
     SDN_notes_log_dir = "{}_{}_{}_{}{}_nomix_notes/".format(SDN_params['log_dir'], fs, hopsize, framesize, dataset_list)
+
+phone_params = config["PHONE"]
+phone_log_dir =  "{}_{}_{}_{}{}/".format(phone_params['log_dir'], fs, hopsize, framesize, dataset_list)
+
 
 filter_len = int(SDN_params["filter_len"])
 encoder_layers = int(SDN_params["encoder_layers"])

@@ -29,28 +29,28 @@ def walk_directory(wav_dir):
 
     for count, lf in enumerate(songs):
         song_name = lf.split('.')[0]
-        singer_name = df.query('performance_id == "{}"'.format(song_name))[' account_id'].values[0].strip()
-        if singer_name not in singers:
+        singer_name = df.query('performance_id == "{}"'.format(songs[0].split('.')[0]))[' account_id'].values[0].strip()
+        if singer_name in config.damp_singers:
             singers.append(singer_name)
-        song_name = song_name.replace('_', '-')
-        utils.progress(count, len(songs), "folder processed")
-        audio, fs = audio_process.load_audio(os.path.join(full_dir, lf))
-        try:
-            segments, timestamps, feat, note, stft = audio_process.process_audio(audio)
+            song_name = song_name.replace('_', '-')
+            utils.progress(count, len(songs), "folder processed")
+            audio, fs = audio_process.load_audio(os.path.join(full_dir, lf))
+            try:
+                segments, timestamps, feat, note, stft = audio_process.process_audio(audio)
 
-            for j, (fea, nots, stf)  in enumerate(zip(feat, note, stft)):
-                singer_dict = {}
-                feat[j], note[j], stft[j] = utils.match_time([fea, nots, stf])
+                for j, (fea, nots, stf)  in enumerate(zip(feat, note, stft)):
+                    singer_dict = {}
+                    feat[j], note[j], stft[j] = utils.match_time([fea, nots, stf])
 
-                singer_dict['feats'] = feat[j]
-                singer_dict['notes'] = note[j]
-                singer_dict['stfts'] = stft[j]
-                write_data.write_data(singer_dict, "damp_{}_{}_{}.hdf5".format(singer_name, song_name, j))
-        except:
-            print("Error in file {}".format(song_name))
+                    singer_dict['feats'] = feat[j]
+                    singer_dict['notes'] = note[j]
+                    singer_dict['stfts'] = stft[j]
+                    write_data.write_data(singer_dict, "damp_{}_{}_{}.hdf5".format(singer_name, song_name, j))
+            except:
+                print("Error in file {}".format(song_name))
 
-    with open('./singers_DAMP.txt', 'w') as sing_file:
-        sing_file.write(str(singers))
+    # with open('./singers_DAMP.txt', 'w') as sing_file:
+    #     sing_file.write(str(singers))
 
 
 

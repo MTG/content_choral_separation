@@ -67,6 +67,7 @@ def data_gen_vc(mode = 'Train', sec_mode = 0):
             mel[:,-2] = f0
 
             if np.isnan(mel).any():
+                mel = np.nan_to_num(mel)
                 print("nan found")
                 import pdb;pdb.set_trace()
 
@@ -120,11 +121,11 @@ def get_stats():
 
             feats = voc_file["feats"][()]
 
-        if len(feats) <= config.max_phr_len:
+        if len(feats) <= config.max_phr_len or np.isnan(feats).any():
             too_small.append(voc_to_open)
-            import pdb;pdb.set_trace()
-            # os.remove(os.path.join(config.feats_dir,voc_to_open))
-            # print("Deleted file {}".format(voc_to_open))
+            # import pdb;pdb.set_trace()
+            os.remove(os.path.join(config.feats_dir,voc_to_open))
+            print("Deleted file {}".format(voc_to_open))
         else:
             f0 = feats[:,-2]
 

@@ -78,8 +78,8 @@ class AutoVC(model.Model):
         self.output_stft_f0 = tf.abs(tf.contrib.signal.stft(tf.squeeze(self.f0), 256, 64))
         self.output_stft_placeholder_f0 = tf.abs(tf.contrib.signal.stft(tf.squeeze(self.f0_placeholder), 256, 64))
 
-        self.f0_loss = tf.reduce_sum(tf.abs(self.f0 - self.f0_placeholder))\
-         + tf.reduce_sum(tf.abs(self.output_stft_placeholder_f0 - self.output_stft_f0))
+        self.f0_loss = tf.reduce_sum(tf.abs(self.f0 - self.f0_placeholder) *tf.clip_by_value(self.notes_placeholder[:,:,0:1]*500, clip_value_min=0, clip_value_max=1))
+         # + tf.reduce_sum(tf.abs(self.output_stft_placeholder_f0 - self.output_stft_f0))
 
         self.final_loss = self.recon_loss + config.mu * self.recon_loss_0 + config.lamda * self.content_loss
 
@@ -458,6 +458,7 @@ class AutoVC(model.Model):
 
         with tf.variable_scope('F0_Model') as scope:
             self.f0 = modules_notes.f0_model(self.content_embedding_1, self.notes_placeholder, self.speaker_onehot_labels_1, self.is_train)
+            self.f0 = (self.f0+self.notes_placeholder[:,:,0:1]) * tf.clip_by_value(self.notes_placeholder[:,:,0:1]*500, clip_value_min=0, clip_value_max=1)
         with tf.variable_scope('Vuv_Model') as scope:
             self.vuv = modules_notes.vuv_model(self.output, self.notes_placeholder, self.f0, self.is_train)
 
