@@ -5,7 +5,7 @@ import librosa
 from synth.training import train_autovc, train_SDN, train_autovc_notes,train_autovc_notes_emb, train_SDN_notes, train_phone
 from synth.synthesis import synth_autovc, synth_SDN, synth_autovc_notes, synth_autovc_notes_emb, synth_SDN_notes, synth_phone
 from synth.config import config
-from synth.data_prep import prepare_musdb, prepare_nus, prepare_csd, prepare_damp, prepare_jvs
+from synth.data_prep import prepare_nus, prepare_csd, prepare_damp, prepare_jvs, prepare_yam
 from synth.models import SDN, autovc_emb, SIN, autovc, autovc_f0
 # from synth.data_pipeline import SDN
 from synth.data_pipeline import phone
@@ -16,7 +16,7 @@ from synth.utils import sig_process
 # import pdb;pdb.set_trace()
 # phone.get_stats()
 # train_phone.train()
-synth_phone.synthesize_wav('./test_nus.wav')
+# synth_phone.synthesize_wav('./test_nus.wav')
 # model = autovc.AutoVC()
 # model.test_file_wav("./11.wav", 5, 5)
 # model = SIN.SIN()
@@ -25,7 +25,7 @@ synth_phone.synthesize_wav('./test_nus.wav')
 
 # jaja, jojo = next(autovc_emb.data_gen_vc())
 # import pdb;pdb.set_trace()
-# prepare_csd.process_dataset()
+prepare_yam.process_dataset()
 # waves, feats, notes, phons, songs = prepare_nus.walk_directory("ADIZ")
 # train_autovc_notes.train()
 # train_SDN_notes.train()

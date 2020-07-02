@@ -11,6 +11,16 @@ import h5py
 
 from synth.utils import sig_process, segment, vamp_notes, audio_process, utils, midi_process, write_data
 from synth.config import config
+from resemblyzer import preprocess_wav, VoiceEncoder
+import librosa
+
+
+def get_embedding_GE2E(filename):
+
+    wav, _ = librosa.load(str(filename), sr=22050)
+    encoder = VoiceEncoder(device="cpu")
+    emb = encoder.embed_utterance(wav)
+    return emb
 
 def walk_directory(singer_name: str, mode: str='sing'):
     """
@@ -30,6 +40,8 @@ def walk_directory(singer_name: str, mode: str='sing'):
         utils.progress(count, len(sing_wav_files), "folder processed")
         audio, fs = audio_process.load_audio(os.path.join(full_dir, lf))
 
+        embedding = get_embedding_GE2E(os.path.join(full_dir, lf))
+
         segments, timestamps, feat, note, stft = audio_process.process_audio(audio)
 
         phonemes = midi_process.open_lab_file(os.path.join(full_dir, lf[:-4]+".txt"))
@@ -38,12 +50,12 @@ def walk_directory(singer_name: str, mode: str='sing'):
 
         for j, (fea, nots, stf, pho)  in enumerate(zip(feat, note, stft, phos)):
             singer_dict = {}
-            feat[j], note[j], stft[j], phos[j] = utils.match_time([fea, nots, stf, pho])
-
-            singer_dict['feats'] = feat[j]
-            singer_dict['notes'] = note[j]
-            singer_dict['phons'] = phos[j]
-            singer_dict['stfts'] = stft[j]
+            featy, notey, stfty, phosy = utils.match_time([fea, nots, stf, pho])
+            singer_dict['embedding'] = embedding
+            singer_dict['feats'] = featy
+            singer_dict['notes'] = notey
+            singer_dict['phons'] = phosy
+            singer_dict['stfts'] = stfty
             write_data.write_data(singer_dict, "nus_{}_{}_{}.hdf5".format(singer_name, lf[:-4], j))
 
 

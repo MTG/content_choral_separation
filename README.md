@@ -1,8 +1,10 @@
-# Pritish Chandna PhD Thesis Consolidated Research
+# SATB Choir Separation, Analysis and Re-synthesis
+
+Pritish Chandna, Helena Cuesta, Emilia Gomez and Darius Peterman.
 
 Music Technology Group, Universitat Pompeu Fabra, Barcelona
 
-A python library for Pritish's PhD research, including functions for source separation, voice change, synthesis and analysis.
+A python library for Choral Separation and Re-synthesis. 
 
 ## Installation
 
@@ -15,7 +17,7 @@ to install the package and dependencies
 ## License
 
 ```
-Copyright 2019 Music Technology Group, Universitat Pompeu Fabra
+Copyright 2020 Music Technology Group, Universitat Pompeu Fabra
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

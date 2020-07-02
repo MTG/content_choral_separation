@@ -37,6 +37,33 @@ def segmenter(audio):
     return voc_segs, time_out
 
 
+def segmenter_yam(audio, audio_back):
+    """
+    Segments in in put audio, assumed to be vocals, to phrases. 
+    Returns only phrases and not the silences.
+    """
+
+    segmenter = segment.VoiceActivityDetectionYAM(config.fs, config.silence_ms, 1)
+
+    voc_segments, back_segments = segmenter.process(audio, audio_back)
+
+
+
+    voc_segs = []
+
+    back_segs = []
+
+    # i = 0
+
+    for  x, y in zip(voc_segments, back_segments):
+        if abs(x).mean()>0.015 and len(x)/config.fs>config.min_phr_len:
+            # sf.write('./tests/test_{}.wav'.format(i), x, config.fs)
+            # i+=1
+            voc_segs.append(x)
+            back_segs.append(y)
+
+    return voc_segs, back_segs
+
 def process_seg(audio):
     """
     Process a segment of the audio.
@@ -76,6 +103,48 @@ def process_seg(audio):
 
             return out_feats, out_notes, out_stft
 
+
+def process_seg_yam(audio, audio_back):
+    """
+    Process a segment of the audio.
+    Returns the world features, TONY annotated notes and the STFT.
+    """
+    out_feats = sig_process.get_world_feats(audio)
+    #Test if the reverse works.
+    # audio_out = sig_process.feats_to_audio(out_feats)
+
+    traj = vamp_notes.extract_notes_pYIN_vamp(audio)
+
+    if traj.shape[0]<1 or len(out_feats)<=config.max_phr_len:
+        return None,None,None
+    else:
+
+        timestamps = np.arange(0, float(traj[-1][1]), config.hoptime)
+
+        out_notes = vamp_notes.note2traj(traj, timestamps)
+
+        out_notes_1 = sig_process.f0_to_hertz(out_notes[:,0])
+
+        out_notes_1[out_notes_1== -np.inf] = 0
+
+        out_notes[:,0] = out_notes_1
+
+        out_stft = abs(np.array(utils.stft(audio, hopsize=config.hopsize, nfft=config.framesize, fs=config.fs)))
+        back_stft = abs(np.array(utils.stft(audio_back, hopsize=config.hopsize, nfft=config.framesize, fs=config.fs)))
+
+        out_feats, out_notes, out_stft, back_stft = utils.match_time([out_feats, out_notes, out_stft, back_stft])
+
+        if len(out_feats)<=config.max_phr_len:
+            return None,None,None, None
+        else:
+
+            assert all(out_feats[:,-2]>0)
+
+            assert len(out_feats) == len(out_notes)
+
+            return out_feats, out_notes, out_stft, back_stft
+
+
 def process_audio(audio):
     """
     Process an audio input. cuts into segments and returns the required features. 
@@ -94,4 +163,22 @@ def process_audio(audio):
             out_stfts.append(segment_stft)
     return segments, time_outs, np.array(out_features), np.array(out_notes), np.array(out_stfts)
 
+def process_audio_yam(audio, audio_back):
+    """
+    Process an audio input. cuts into segments and returns the required features. 
+    """
+
+    segments, back_segments = segmenter_yam(audio, audio_back)
+    out_features = []
+    out_notes = []
+    out_stfts = []
+    back_stfts = []
+    for back_segment, segment in zip(back_segments, segments):
+        segment_features, segment_notes, segment_stft, back_stft = process_seg_yam(segment, back_segment)
+        if segment_features is not None:
+            out_features.append(segment_features)
+            out_notes.append(segment_notes)
+            out_stfts.append(segment_stft)
+            back_stfts.append(back_stft)
+    return segments, np.array(back_stfts), np.array(out_features), np.array(out_notes), np.array(out_stfts)
 

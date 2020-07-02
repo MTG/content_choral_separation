@@ -69,33 +69,11 @@ def bi_static_stacked_RNN(x, scope='RNN', lstm_size = config.autovc_lstm_size):
 
 
 
-
-def bi_dynamic_RNN(x, input_lengths, scope='RNN'):
-    """
-    Stacked dynamic RNN, does not need unpacking, but needs input_lengths to be specified
-    """
-
-    with tf.variable_scope(scope):
-
-        cell = tf.nn.rnn_cell.LSTMCell(num_units=autovc_lstm_size, state_is_tuple=True)
-
-        outputs, states  = tf.nn.bidirectional_dynamic_rnn(
-            cell_fw=cell,
-            cell_bw=cell,
-            dtype=tf.float32,
-            sequence_length=input_lengths,
-            inputs=x)
-
-        outputs = tf.concat(outputs, axis=2)
-
-    return outputs
-
-
-def RNN(x, scope='RNN'):
+def RNN(x, scope='RNN', lstm_size=config.autovc_out_lstm_size):
     with tf.variable_scope(scope):
         x = tf.unstack(x, config.max_phr_len, 1)
 
-        lstm_cell = rnn.BasicLSTMCell(num_units=config.autovc_lstm_size)
+        lstm_cell = tf.nn.rnn_cell.LSTMCell(lstm_size, state_is_tuple=True)
 
         # Get lstm cell output
         outputs, states = tf.contrib.rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
@@ -135,6 +113,12 @@ def content_encoder(inputs, singer_label, is_train):
     emb = tf.stack(emb)
 
 
+    return emb
+
+
+
+def decoder(emb, singer_label, is_train):
+
     embo = tf.tile(tf.reshape(emb[0],[config.batch_size,1,-1]),[1,config.autovc_code_sam,1])
 
     for i in range(1, int(config.max_phr_len/config.autovc_code_sam)):
@@ -142,19 +126,9 @@ def content_encoder(inputs, singer_label, is_train):
 
         embo = tf.concat([embo, embs], axis = 1)
 
-
-    emb = bi_static_stacked_RNN(tf.squeeze(embo), scope = "Encode_emb")
-
-    return emb
-
-
-
-def decoder(emb, singer_label, is_train):
-
-
     singer_label = tf.tile(tf.reshape(singer_label,[config.batch_size,1,-1]),[1,config.max_phr_len,1])
 
-    inputs = tf.concat([emb, singer_label], axis = -1)
+    inputs = tf.concat([embo, singer_label], axis = -1)
 
     
 
