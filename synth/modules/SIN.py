@@ -105,6 +105,10 @@ def content_encoder_stft(inputs, is_train):
         emb.append(tf.concat([lstm_fow[:, i*config.autovc_code_sam,:], lstm_back[:, (i+1)*config.autovc_code_sam-1, :]], axis = -1))
     emb = tf.stack(emb)
 
+    return emb
+
+
+def decoder(emb, stft, is_train):
 
     embo = tf.tile(tf.reshape(emb[0],[config.batch_size,1,-1]),[1,config.autovc_code_sam,1])
 
@@ -113,16 +117,7 @@ def content_encoder_stft(inputs, is_train):
 
         embo = tf.concat([embo, embs], axis = 1)
 
-
-    emb = bi_static_stacked_RNN(tf.squeeze(embo), scope = "Encode_emb")
-
-    return emb
-
-
-def decoder(emb, stft, is_train):
-
-
-    inputs = tf.concat([emb, stft], axis = -1)
+    inputs = tf.concat([embo, stft], axis = -1)
 
     lstm_op_1 = RNN(inputs, scope = "Decode_1")
 

@@ -433,10 +433,10 @@ class AutoVC(model.Model):
         speaker_name = file_name.split('_')[1]
         speaker_index = config.singers.index(speaker_name)
 
-        speaker_gender = config.genders[speaker_name]
+        speaker_gender = "M"
         print("Original singer is {}, a human {}".format(speaker_name, speaker_gender))
 
-        speaker_2_gender = config.genders[config.singers[speaker_index_2]]
+        speaker_2_gender = "M"
         print("Target singer is {}, a human {}".format(config.singers[speaker_index_2], speaker_2_gender))
         
         out_mel = self.process_file(mel, speaker_index, speaker_index_2, self.sess)

@@ -231,6 +231,7 @@ class AutoVC(model.Model):
 
         with h5py.File(os.path.join(config.feats_dir,file_name), "r") as hdf5_file:
             mel = hdf5_file['feats'][()]
+            emb = hdf5_file['embedding'][()]
 
         f0 = mel[:,-2]
 
@@ -240,7 +241,7 @@ class AutoVC(model.Model):
 
         mel[:,-2] = f0
 
-        return mel
+        return mel, np.squeeze(emb)
 
     def read_wav_file(self, file_name):
 
@@ -284,22 +285,21 @@ class AutoVC(model.Model):
         Function to extract multi pitch from file. Currently supports only HDF5 files.
         """
 
-        mel = self.read_hdf5_file(file_name)
+        mel, singer_1 = self.read_hdf5_file(file_name)
 
         speaker_name = file_name.split('_')[1]
         speaker_index = config.singers.index(speaker_name)
-        speaker_file = [x for x in os.listdir(config.emb_dir) if x.endswith('npy') and x.split('_')[1] == speaker_name]
+        # speaker_file = [x for x in os.listdir(config.emb_dir) if x.endswith('npy') and x.split('_')[1] == speaker_name]
 
-        speaker_gender = config.genders[speaker_name]
+        speaker_gender = "M"
         print("Original singer is {}, a human {}".format(speaker_name, speaker_gender))
 
-        speaker_file_2 = [x for x in os.listdir(config.emb_dir) if x.endswith('npy') and x.split('_')[1] == config.singers[speaker_index_2]]
-        speaker_2_gender = config.genders[config.singers[speaker_index_2]]
+        speaker_file_2 = [x for x in os.listdir(config.feats_dir) if x.endswith('hdf5') and x.split('_')[1] == config.singers[speaker_index_2]]
+        mel_2, singer_2 = self.read_hdf5_file(random.choice(speaker_file_2))
+
+        speaker_2_gender = "M"
         print("Target singer is {}, a human {}".format(config.singers[speaker_index_2], speaker_2_gender))
 
-        singer_1 = np.load(os.path.join(config.emb_dir, random.choice(speaker_file)))
-
-        singer_2 = np.load(os.path.join(config.emb_dir, random.choice(speaker_file_2)))
 
 
         out_mel = self.process_file(mel, singer_1, singer_2, self.sess)
@@ -323,7 +323,11 @@ class AutoVC(model.Model):
 
             audio_out = sig_process.feats_to_audio(out_featss) 
 
-            sf.write(os.path.join(config.output_dir,'./{}_{}_autovc.wav'.format(file_name[:-5], config.singers[speaker_index_2])), audio_out, config.fs)
+            audio_out_2 = sig_process.feats_to_audio(mel_2) 
+
+            sf.write(os.path.join(config.output_dir,'./{}_{}_autovcemb.wav'.format(file_name[:-5], config.singers[speaker_index_2])), audio_out, config.fs)
+
+            sf.write(os.path.join(config.output_dir,'./{}_target.wav'.format(file_name[:-5])), audio_out_2, config.fs)
 
         synth_ori = utils.query_yes_no("Synthesize ground truth with vocoder? ")
 

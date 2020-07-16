@@ -55,6 +55,7 @@ def data_gen_vc(mode = 'Train', sec_mode = 0):
 
             with h5py.File(os.path.join(config.feats_dir,voc_to_open), "r") as hdf5_file:
                 mel = hdf5_file['feats'][()]
+                emb = hdf5_file['embedding'][()]
 
             f0 = mel[:,-2]
 
@@ -66,7 +67,7 @@ def data_gen_vc(mode = 'Train', sec_mode = 0):
 
             speaker_name = voc_to_open.split('_')[1]
             # if config.autovc_mix_emb:
-            speaker_file = [x for x in os.listdir(config.emb_dir) if x.endswith('npy') and x.split('_')[1] == speaker_name]
+            # speaker_file = [x for x in os.listdir(config.emb_dir) if x.endswith('npy') and x.split('_')[1] == speaker_name]
             # else: 
 
             mel = (mel - min_feat)/(max_feat-min_feat)
@@ -78,12 +79,11 @@ def data_gen_vc(mode = 'Train', sec_mode = 0):
                 voc_idx = np.random.randint(0,len(mel)-config.max_phr_len)
                 feats_targs.append(mel[voc_idx:voc_idx+config.max_phr_len])
 
-                targets_speakers.append(np.load(os.path.join(config.emb_dir, random.choice(speaker_file))))
+                targets_speakers.append(emb)
 
         feats_targs = np.array(feats_targs)
-        
 
-        yield feats_targs, np.array(targets_speakers)
+        yield feats_targs, np.squeeze(np.array(targets_speakers))
 
 
 

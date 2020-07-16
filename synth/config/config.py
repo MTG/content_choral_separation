@@ -50,6 +50,9 @@ bach_params = config['bach']
 bach_singers = bach_params['singers'].split(', ')
 
 
+yam_params = config['yam']
+yam_singers = yam_params['singers'].split(', ')
+
     # import pdb;pdb.set_trace()
 
 feature_params = config["feature_params"]
@@ -70,6 +73,8 @@ if "NUS" in datasets:
 
 if "JVS" in datasets:
     singers = singers + jvs_singers
+if "YAM" in datasets:
+    singers = singers + yam_singers
 if "CSD" in datasets:
     singers = singers + csd_singers
 if "DAMP" in datasets:

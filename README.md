@@ -1,10 +1,16 @@
-# SATB Choir Separation, Analysis and Re-synthesis
 
-Pritish Chandna, Helena Cuesta, Emilia Gomez and Darius Peterman.
+A python library for Content Based Singing Voice Extraction: 
+
+# A Deep Learning Based Analysis-Synthesis Framework For Unison Singing
+
+Pritish Chandna, Helena Cuesta and Emilia Gomez
+
+# Content Based Singing Voice Extraction From a Musical Mixture
+Pritish Chandna, Merlijn Blaauw, Jordi Bonada, Emilia Gomez
 
 Music Technology Group, Universitat Pompeu Fabra, Barcelona
 
-A python library for Choral Separation and Re-synthesis. 
+
 
 ## Installation
 
