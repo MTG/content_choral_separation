@@ -1,8 +1,6 @@
 
 A python library for Content Based Singing Voice Extraction: 
 
-Booboo
-
 # A Deep Learning Based Analysis-Synthesis Framework For Unison Singing
 
 Pritish Chandna, Helena Cuesta and Emilia Gomez
