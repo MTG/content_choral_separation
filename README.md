@@ -20,6 +20,8 @@ To install, run
 
 to install the package and dependencies
 
+Trained models and examples will be uploaded shortly.
+
 ## License
 
 ```
