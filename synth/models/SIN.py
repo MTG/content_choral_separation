@@ -412,6 +412,74 @@ class SIN(model.Model):
             audio = sig_process.feats_to_audio(mel) 
             sf.write(os.path.join(config.output_dir,'{}_ori.wav'.format(file_name[:-4])), audio, config.fs)
 
+
+    def test_file_wav_f0(self, file_name, f0_file):
+        """
+        Function to extract multi pitch from file. Currently supports only HDF5 files.
+        """
+
+
+        mel, stft = self.read_wav_file(file_name)
+
+        # import pdb;pdb.set_trace()
+
+        timestamps = np.arange(0, len(mel)*config.hoptime, config.hoptime)
+
+
+        f0 = midi_process.open_f0_file(f0_file)
+
+        f1 = vamp_notes.note2traj(f0, timestamps)
+
+        f1 = sig_process.process_pitch(f1[:,0])
+
+        out_mel, out_f0, out_vuv = self.process_file(stft,  self.sess)
+
+        # plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]},\
+        #  "F0": {"gt": f1[:,0], "op": out_f0}, "Vuv": {"gt": f1[:,1], "op": out_vuv}}
+
+
+        # self.plot_features(plot_dict)
+
+        file_name = file_name.split('/')[-1]
+
+        # synth_sac = utils.query_yes_no("Synthesize with SAC f0? ")
+
+        # if synth_sac:
+
+        out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0], -2:]), axis = -1)
+
+        audio_out = sig_process.feats_to_audio(out_featss) 
+
+        sf.write(os.path.join(config.output_dir,'{}_SIN_YAM_SACf0.wav'.format(file_name[:-4])), audio_out, config.fs)
+
+        # synth = utils.query_yes_no("Synthesize output? ")
+
+        
+        f2 = f1[:,0:1] + np.random.rand(f1[:,0:1].shape[0])[:,np.newaxis]
+        # if synth:
+
+        out_featss = np.concatenate((out_mel[:f1.shape[0]], f1[:,0:1], out_vuv[:f1.shape[0]]), axis = -1)
+
+        audio_out = sig_process.feats_to_audio(out_featss) 
+
+        sf.write(os.path.join(config.output_dir,'{}_SIN_YAM_f0_{}.wav'.format(file_name[:-4], f0_file.split('/')[-1])), audio_out, config.fs)
+
+
+        out_featss = np.concatenate((out_mel[:f1.shape[0]], f2, out_vuv[:f1.shape[0]]), axis = -1)
+
+        audio_out = sig_process.feats_to_audio(out_featss) 
+
+        sf.write(os.path.join(config.output_dir,'{}_SIN_YAM_f0_{}_noise.wav'.format(file_name[:-4], f0_file.split('/')[-1])), audio_out, config.fs)
+        # synth_ori = utils.query_yes_no("Synthesize with output f0? ")
+
+        # if synth_ori:
+        #     out_featss = np.concatenate((out_mel, out_f0, out_vuv), axis = -1)
+
+        #     audio_out = utils.feats_to_audio(out_featss) 
+
+        #     sf.write(os.path.join(config.output_dir,'{}_SIN_YAM_Outf0.wav'.format(file_name[:-4])), audio_out, config.fs)
+
+
     def extract_feature_file(self, file_name):
         """
         Function to extract multi pitch from file. Currently supports only HDF5 files.
@@ -498,48 +566,48 @@ class SIN(model.Model):
             audio = sig_process.feats_to_audio(mel) 
             sf.write(os.path.join(config.output_dir,'{}_ori.wav'.format(file_name[:-4])), audio, config.fs)
 
-    def test_file_wav_f0(self, file_name, f0_file):
-        """
-        Function to extract multi pitch from file. Currently supports only HDF5 files.
-        """
+    # def test_file_wav_f0(self, file_name, f0_file):
+    #     """
+    #     Function to extract multi pitch from file. Currently supports only HDF5 files.
+    #     """
 
 
-        mel, stft = self.read_wav_file(file_name)
+    #     mel, stft = self.read_wav_file(file_name)
 
-        f0 = midi_process.open_f0_file(f0_file)
+    #     f0 = midi_process.open_f0_file(f0_file)
 
-        timestamps = np.arange(0, len(mel)*config.hoptime, config.hoptime)
-
-
-        f1 = vamp_notes.note2traj(f0, timestamps)
-
-        f1 = sig_process.process_pitch(f1[:,0])
-
-        out_mel, out_f0, out_vuv = self.process_file(stft, self.sess)
-
-        plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]},\
-         "F0": {"gt": f1[:,0], "op": out_f0}, "Vuv": {"gt": mel[:,-1], "op": out_vuv}}
+    #     timestamps = np.arange(0, len(mel)*config.hoptime, config.hoptime)
 
 
-        self.plot_features(plot_dict)
+    #     f1 = vamp_notes.note2traj(f0, timestamps)
 
-        synth = utils.query_yes_no("Synthesize output? ")
+    #     f1 = sig_process.process_pitch(f1[:,0])
 
-        file_name = file_name.split('/')[-1]
+    #     out_mel, out_f0, out_vuv = self.process_file(stft, self.sess)
 
-        if synth:
+    #     plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]},\
+    #      "F0": {"gt": f1[:,0], "op": out_f0}, "Vuv": {"gt": mel[:,-1], "op": out_vuv}}
 
-            out_featss = np.concatenate((out_mel[:f1.shape[0]], f1[:out_mel.shape[0], 0:1], out_vuv[:f1.shape[0]]), axis = -1)
 
-            audio_out = sig_process.feats_to_audio(out_featss) 
+    #     self.plot_features(plot_dict)
 
-            sf.write(os.path.join(config.output_dir,'{}_SIN_f0_{}.wav'.format(file_name[:-4], f0_file.split('/')[-1])), audio_out, config.fs)
+    #     synth = utils.query_yes_no("Synthesize output? ")
 
-        synth_ori = utils.query_yes_no("Synthesize ground truth with vocoder? ")
+    #     file_name = file_name.split('/')[-1]
 
-        if synth_ori:
-            audio = sig_process.feats_to_audio(mel) 
-            sf.write(os.path.join(config.output_dir,'{}_ori.wav'.format(file_name[:-4])), audio, config.fs)
+    #     if synth:
+
+    #         out_featss = np.concatenate((out_mel[:f1.shape[0]], f1[:out_mel.shape[0], 0:1], out_vuv[:f1.shape[0]]), axis = -1)
+
+    #         audio_out = sig_process.feats_to_audio(out_featss) 
+
+    #         sf.write(os.path.join(config.output_dir,'{}_SIN_f0_{}.wav'.format(file_name[:-4], f0_file.split('/')[-1])), audio_out, config.fs)
+
+    #     synth_ori = utils.query_yes_no("Synthesize ground truth with vocoder? ")
+
+    #     if synth_ori:
+    #         audio = sig_process.feats_to_audio(mel) 
+    #         sf.write(os.path.join(config.output_dir,'{}_ori.wav'.format(file_name[:-4])), audio, config.fs)
 
     def process_file(self, mel,  sess):
 

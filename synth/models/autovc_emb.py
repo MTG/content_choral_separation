@@ -243,6 +243,20 @@ class AutoVC(model.Model):
 
         return mel, np.squeeze(emb)
 
+
+    def read_hdf5_file_emb(self, file_name):
+        """
+        Function to read and process input file, given name and the synth_mode.
+        Returns features for the file based on mode (0 for hdf5 file, 1 for wav file).
+        Currently, only the HDF5 version is implemented.
+        """
+        # if file_name.endswith('.hdf5'):
+
+
+        with h5py.File(os.path.join(config.embs_dir,file_name), "r") as hdf5_file:
+            emb = hdf5_file['embedding'][()]
+
+        return np.squeeze(emb)
     def read_wav_file(self, file_name):
 
         audio, fs = librosa.core.load(file_name, sr=config.fs)
@@ -256,9 +270,11 @@ class AutoVC(model.Model):
         else: 
             vocals = np.array(audio)
 
-        voc_stft = abs(utils.stft(vocals))
+        voc_stft = abs(np.array(utils.stft(audio, hopsize=config.hopsize, nfft=config.framesize, fs=config.fs)))
 
-        feats = utils.stft_to_feats(vocals,fs)
+        # import pdb;pdb.set_trace()
+
+        feats = sig_process.get_world_feats(audio)
 
         voc_stft = np.clip(voc_stft, 0.0, 1.0)
 
@@ -273,12 +289,84 @@ class AutoVC(model.Model):
 
         stft, mel = self.read_wav_file(file_name)
 
-        out_mel = self.process_file(stft, speaker_index, self.sess)
+        singer_1 = utils.get_embedding_GE2E(file_name)
+
+        speaker_file_2 = [x for x in os.listdir(config.feats_dir) if x.endswith('hdf5') and x.split('_')[1] == config.singers[speaker_index]]
+        mel_2, singer_2 = self.read_hdf5_file(random.choice(speaker_file_2))
+
+        out_mel = self.process_file(mel, singer_1, singer_2, self.sess)
+
+        plot_dict = {"Spec Envelope": {"gt": mel[:,:-6], "op": out_mel[:,:-4]}, "Aperiodic":{"gt": mel[:,-6:-2], "op": out_mel[:,-4:]}}
+
+        self.plot_features(plot_dict)
+
+        out_featss = np.concatenate((out_mel[:mel.shape[0]], mel[:out_mel.shape[0],-2:-1], mel[:out_mel.shape[0],-1:]), axis = -1)
+
+        audio_out = sig_process.feats_to_audio(out_featss) 
+
+        audio_out_2 = sig_process.feats_to_audio(mel_2) 
+
+        file_name = file_name.split('/')[-1].split('.')[0]
+
+        sf.write(os.path.join(config.output_dir,'./{}_{}_autovcemb.wav'.format(file_name, config.singers[speaker_index])), audio_out, config.fs)
+
+        sf.write(os.path.join(config.output_dir,'./{}_{}_target.wav'.format(file_name,config.singers[speaker_index])), audio_out_2, config.fs)
+        audio = sig_process.feats_to_audio(mel) 
+        sf.write(os.path.join(config.output_dir,'./{}_ori.wav'.format(file_name)), audio, config.fs)
 
 
-        self.plot_features(mel, out_mel)
+    def solo_unison_file_wav(self, file_name, std=0.5, num_singers=4, timing: int=5):
+        """
+        Function to extract multi pitch from file. Currently supports only HDF5 files.
+        """
+        part = file_name.split('/')[-1].split('_')[1]
 
+        # import pdb;pdb.set_trace()
+        
+        stft, mel = self.read_wav_file(file_name)
 
+        singer_1 = utils.get_embedding_GE2E(file_name)
+
+        # import pdb;pdb.set_trace()
+
+        # speaker_indecis = [config.singers.index(x) for x in config.singers if x.startswith(part[:-1]) and x != part]
+
+        audio = sig_process.feats_to_audio(mel) 
+        sf.write(os.path.join(config.output_dir,'./{}_ori.wav'.format(file_name.split('/')[-1])), audio, config.fs)
+        stft, mel = self.read_wav_file(file_name)
+        # vuv = mel[:,-1]
+        # diffs = np.diff(vuv)
+        output = audio
+        output_nc = audio
+        for count in range(num_singers):
+            if part[:-1] in ["soprano", "alto"]:
+                singer_2 = self.read_hdf5_file_emb("female_{}.hdf5".format(count+1))
+            elif part[:-1] in ["tenor", "bass"]: 
+                singer_2 = self.read_hdf5_file_emb("male_{}.hdf5".format(count+1))
+
+    
+            out_mel = self.process_file(mel, singer_1, singer_2, self.sess)
+            f0 = mel[:out_mel.shape[0],-2:-1] + np.random.rand(mel[:out_mel.shape[0],-2:-1].shape[0])[:,np.newaxis]* std
+            out_featss = np.concatenate((out_mel[:mel.shape[0]], f0, mel[:out_mel.shape[0],-1:]), axis = -1)
+            out_featss_nochange = np.concatenate((mel[:mel.shape[0]], f0, mel[:out_mel.shape[0],-1:]), axis = -1)
+            if timing>0:
+                out_featss = np.roll(out_featss, np.random.randint(-timing,timing),0)
+                out_featss_nochange = np.roll(out_featss_nochange, np.random.randint(-timing,timing),0)
+            audio_out = sig_process.feats_to_audio(out_featss) 
+            audio_out_nochange = sig_process.feats_to_audio(out_featss_nochange) 
+
+            output = output[:len(audio_out)]
+            output+=audio_out
+            output_nc = output_nc[:len(audio_out_nochange)]
+            output_nc+=audio_out_nochange
+
+        output = output/num_singers
+        output_nc = output_nc/num_singers
+
+        sf.write(os.path.join(config.output_dir,'./{}_{}_{}_{}_unison.wav'.format(file_name.split('/')[-1][:-5], std, num_singers, timing)), output, config.fs)
+        sf.write(os.path.join(config.output_dir,'./{}_{}_{}_{}_unison_notimbre.wav'.format(file_name.split('/')[-1][:-5], std, num_singers, timing)), output_nc, config.fs)
+
+        audio = sig_process.feats_to_audio(mel) 
 
     def test_file_hdf5(self, file_name, speaker_index_2):
         """

@@ -11,7 +11,16 @@ from scipy.ndimage import filters
 import synth.utils.segment
 import scipy
 from tqdm import tqdm
+from resemblyzer import preprocess_wav, VoiceEncoder
+import librosa
 
+
+def get_embedding_GE2E(filename):
+
+    wav, _ = librosa.load(str(filename), sr=22050)
+    encoder = VoiceEncoder(device="cpu")
+    emb = encoder.embed_utterance(wav)
+    return emb
 
 def griffinlim(spectrogram, n_iter = 50, window = 'hann', n_fft = 1024, hop_length = -1, verbose = False):
 

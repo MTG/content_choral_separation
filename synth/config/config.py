@@ -12,7 +12,7 @@ config = configparser.ConfigParser()
 config.read(config_path)
 
 raw_dirs = config["raw_dirs"]
-emb_dir = raw_dirs["embs_ge2e_full"]
+embs_dir = raw_dirs["embs_dir"]
 
 sig_process = config["signal_processing"]
 fs = int(sig_process["fs"])
