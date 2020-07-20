@@ -20,7 +20,11 @@ To install, run
 
 to install the package and dependencies
 
-Trained models and examples will be uploaded shortly.
+## Trained Models
+Trained models can be found at [this](https://drive.google.com/file/d/1EfGf-Cf2bw3G5r5iKet2Qg_VMKBwKmf5/view?usp=sharing) link.
+
+## Examples for applications
+Examples for the STU and UTS case can be seen in the example_STU.py and example_UTS.py files
 
 ## License
 
